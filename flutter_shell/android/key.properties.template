@@ -1,0 +1,12 @@
+# Template for android/key.properties
+# Copy this file to android/key.properties (gitignored) and fill in.
+# For the existing Maximoney keystore:
+#   storeFile=/Users/nevaidaggarwal/Desktop/maximoney-keystore.jks
+#   storePassword=Maximoney@2024
+#   keyPassword=Maximoney@2024
+#   keyAlias=maximoney
+
+storePassword=CHANGE_ME
+keyPassword=CHANGE_ME
+keyAlias=CHANGE_ME
+storeFile=/absolute/path/to/keystore.jks
