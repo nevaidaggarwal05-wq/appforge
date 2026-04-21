@@ -1,19 +1,14 @@
 // Root route. If Supabase redirects here with ?code=... (magic-link flow),
-// exchange the code for a session before sending the user on to /apps.
+// hand off to the /auth/callback Route Handler (Server Components can't set cookies).
 import { redirect } from 'next/navigation';
-import { getServerClient } from '@/lib/supabase/server';
 
-export default async function Home({
+export default function Home({
   searchParams,
 }: {
   searchParams: { code?: string };
 }) {
   if (searchParams?.code) {
-    const supabase = getServerClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(searchParams.code);
-    if (error) {
-      redirect(`/login?error=${encodeURIComponent(error.message)}`);
-    }
+    redirect(`/auth/callback?code=${encodeURIComponent(searchParams.code)}`);
   }
   redirect('/apps');
 }

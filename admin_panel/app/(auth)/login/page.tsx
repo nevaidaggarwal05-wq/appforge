@@ -27,13 +27,13 @@ export default function LoginPage() {
     });
     setLoading(false);
     if (error) { toast.error(error.message); return; }
-    toast.success('Check your email for the 6-digit code');
+    toast.success('Check your email for the code');
     setStage('code');
   };
 
   const verifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (code.length !== 6) return;
+    if (code.length < 6) return;
     setLoading(true);
     const supabase = getBrowserClient();
     const { error } = await supabase.auth.verifyOtp({ email, token: code, type: 'email' });
@@ -90,8 +90,8 @@ export default function LoginPage() {
                 type="text"
                 autoFocus
                 inputMode="numeric"
-                pattern="[0-9]{6}"
-                maxLength={6}
+                pattern="[0-9]{6,10}"
+                maxLength={10}
                 required
                 value={code}
                 onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
@@ -99,7 +99,7 @@ export default function LoginPage() {
                 placeholder="123456"
               />
             </div>
-            <Button type="submit" disabled={loading || code.length !== 6} className="w-full mt-4">
+            <Button type="submit" disabled={loading || code.length < 6} className="w-full mt-4">
               {loading ? 'Verifying...' : 'Verify & sign in'}
             </Button>
           </form>
