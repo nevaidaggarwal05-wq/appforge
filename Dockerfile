@@ -5,7 +5,7 @@
 FROM node:20-alpine AS deps
 WORKDIR /app/admin_panel
 COPY admin_panel/package.json admin_panel/package-lock.json* ./
-RUN npm install --no-audit --no-fund
+RUN npm install --include=dev --no-audit --no-fund
 
 FROM node:20-alpine AS builder
 WORKDIR /app
