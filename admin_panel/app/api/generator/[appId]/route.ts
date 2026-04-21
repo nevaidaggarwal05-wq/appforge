@@ -169,9 +169,9 @@ export async function GET(
   zip.file('README.md',           generateReadme(app));
   zip.file('.appforge-app-id',    app.id);
 
-  const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+  const buffer = await zip.generateAsync({ type: 'uint8array' });
 
-  return new NextResponse(buffer, {
+  return new NextResponse(buffer as unknown as BodyInit, {
     status: 200,
     headers: {
       'Content-Type':        'application/zip',

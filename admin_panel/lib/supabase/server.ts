@@ -14,7 +14,7 @@ export function getServerClient() {
     {
       cookies: {
         getAll()    { return cookieStore.getAll(); },
-        setAll(all) {
+        setAll(all: { name: string; value: string; options?: Record<string, unknown> }[]) {
           try {
             all.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
           } catch {
