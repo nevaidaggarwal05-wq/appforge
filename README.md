@@ -1,141 +1,107 @@
-# AppForge v5 — Handoff to Claude Code Desktop
+# AppForge v5
 
-**Purpose:** Transfer all context from the Claude.ai chat session to Claude Code running on your Mac, so it can finish Phase 4 (Flutter shell), deploy everything to Hetzner, and hand you a production-testable APK.
-
----
-
-## What's in this ZIP
-
-```
-appforge-handoff/
-├── README.md                         ← You are reading this
-├── HANDOFF_PROMPT.md                 ← Paste into Claude Code session start
-├── admin_panel/                      ← COMPLETE (Phase 2+3 done, all bugs fixed)
-│   ├── app/                          ← 15 route files
-│   ├── components/                   ← 4 UI primitives
-│   ├── lib/                          ← Supabase + FCM + utils
-│   ├── supabase/migrations/
-│   ├── package.json
-│   ├── middleware.ts
-│   └── ... (45 files total)
-├── docs/
-│   ├── ARCHITECTURE.md               ← System design
-│   ├── PHASE_STATUS.md               ← What's done, what's pending
-│   ├── API_CONTRACT.md               ← /api/config/:appId JSON schema (CRITICAL)
-│   ├── BUGS_FIXED.md                 ← 9 bugs caught and fixed
-│   └── PHASE_4_SPEC.md               ← Exact spec for Flutter shell (not yet written)
-└── credentials_checklist.md          ← What you'll need to give Claude Code
-```
+White-label mobile-app platform. One admin panel drives N Android apps
+that are thin Flutter WebView shells over a website of your choosing.
+Remote config controls theming, features, splash, push, updates, etc.,
+so most changes ship without a new Play Store release.
 
 ---
 
-## How to Hand Off to Claude Code Desktop
+## Repository layout
 
-### Step 1: Install Claude Code Desktop (if you haven't)
+```
+handoff/
+├── README.md                       ← this file
+├── CLAUDE.md                       ← conventions that Claude Code must follow
+│
+├── admin_panel/                    ← Next.js 14 admin + /api/config/:appId
+│   ├── app/                        ← routes (dashboard + API)
+│   ├── lib/supabase/               ← DB client + types
+│   ├── supabase/migrations/        ← schema (003 is the current head)
+│   └── CLAUDE.md                   ← admin-panel specific notes
+│
+├── flutter_shell/                  ← generic Flutter WebView shell (template)
+│   ├── lib/                        ← app_config.dart, services, screens, widgets
+│   ├── android/                    ← shell defaults; per-app bits live under apps/
+│   ├── ios/                        ← (iOS not shipped yet)
+│   ├── l10n.yaml + lib/l10n/       ← English + Hindi ARB files
+│   └── CLAUDE.md                   ← shell-specific notes
+│
+├── apps/                           ← per-app configuration (first-class)
+│   └── maximoney/
+│       ├── app.yaml                ← single source of truth: id, package, version
+│       └── overrides/              ← files that replace shell defaults at build time
+│           ├── lib/app_config.dart
+│           ├── pubspec.yaml
+│           ├── android/app/build.gradle
+│           ├── android/app/src/main/AndroidManifest.xml
+│           ├── android/app/src/main/res/values/{strings,colors}.xml
+│           ├── android/app/src/main/kotlin/<pkg>/MainActivity.kt
+│           ├── android/settings.gradle
+│           └── docs/hosting/assetlinks_TEMPLATE.json
+│
+├── scripts/                        ← build automation — always go through these
+│   ├── sync-app.sh   <app>         ← shell + overrides → ~/Desktop/builds/<app>/
+│   ├── bump-version.sh <app> <bump>← patch/minor/major; updates yaml + pubspec + gradle
+│   └── release.sh    <app>         ← sync → clean → build aab+apk → copy to out/
+│
+├── docs/                           ← architecture, API contract, audits
+└── .gitignore
+```
 
-- Go to: https://claude.com/download (get the desktop app)
-- Or if you prefer terminal: `npm install -g @anthropic-ai/claude-code`, then `claude-code` in any directory
+Artifacts live **outside** the repo at `~/Desktop/builds/<app>/` and are
+regenerable at any time from `flutter_shell/` + `apps/<app>/overrides/`.
+Never edit files under `~/Desktop/builds/<app>/` directly — they will be
+overwritten by the next `sync-app.sh`.
 
-### Step 2: Unzip this package
+---
+
+## Releasing a new version (the only supported path)
 
 ```bash
-cd ~/Desktop
-unzip appforge-handoff.zip
-cd appforge-handoff
+cd ~/Desktop/handoff
+
+# 1. Make your code change.
+#    Shell-wide change         → edit flutter_shell/
+#    App-specific change       → edit apps/<app>/overrides/
+
+# 2. Bump the version (optional — only if shipping).
+./scripts/bump-version.sh maximoney patch    # or minor / major
+
+# 3. Commit everything so the git ref in BUILD_INFO.md is meaningful.
+git add -A && git commit -m "…"  && git push
+
+# 4. Build signed AAB + APK.
+./scripts/release.sh maximoney
+
+# Artifacts appear in ~/Desktop/builds/maximoney/out/
+#   maximoney-v<name>-code<code>.aab   → upload to Play Console
+#   maximoney-v<name>-code<code>.apk   → side-load for testing
+#   BUILD_INFO.md                      → auto-appended with git ref
 ```
 
-### Step 3: Open the folder in Claude Code
-
-- Claude Code Desktop: File → Open Folder → select `appforge-handoff/`
-- Or terminal: `cd appforge-handoff && claude-code`
-
-### Step 4: Start the session with the handoff prompt
-
-Copy the contents of `HANDOFF_PROMPT.md` and paste it as your first message to Claude Code. This gives it all the context it needs.
-
-Claude Code will:
-1. Read the entire codebase (all 45 files)
-2. Read all docs (architecture, API contract, phase status, bugs fixed)
-3. Tell you what it understands before asking for credentials
-4. Wait for your approval before starting each major step
+The scripts are idempotent — safe to re-run.
 
 ---
 
-## What Claude Code Will Do
+## Deployments
 
-### Session 1: Review + finish Phase 4 (2-3 hours)
-- Read all 45 existing files in admin_panel/
-- Read all 5 docs
-- Build the Flutter shell (~35 files): services, screens, widgets, Android/iOS config
-- Run `flutter analyze` locally to catch Dart errors
-- Ask you to approve before proceeding
-
-### Session 2: Deployment (wait for credentials)
-You share these when you're ready:
-- Hetzner server IP + root password
-- Domain name (e.g., `admin.yourdomain.com`)
-- Cloudflare API token (DNS)
-- Supabase project URL + anon key + service role key
-- Firebase service account JSON (ONE shared project)
-- GitHub Personal Access Token
-
-Claude Code will:
-- SSH into Hetzner, install Coolify
-- Deploy admin panel via Coolify
-- Run Supabase migration
-- Configure domain + SSL
-- Test `/api/config/test` returns a valid response
-
-### Session 3: First app build + test (30 min)
-- You create "Maximoney" in the admin panel
-- Download Flutter ZIP
-- Claude Code builds the signed APK locally
-- You install on your phone
-- Full end-to-end test: config changes, notifications, biometric, etc.
-
-### Total calendar time: 3-4 days
-Because you're not testing intermediate APKs — only the final one after the backend is live — this is actually faster than testing each phase in isolation. Good call.
+- **Admin panel:** Coolify on Hetzner, deployed from `admin_panel/` on
+  every push to `main`. Env vars (Supabase service-role key, Firebase
+  service-account JSON) live in Coolify, not in this repo.
+- **Supabase:** schema migrations under `admin_panel/supabase/migrations/`.
+  Claude does not have the service-role key locally — when a new
+  migration is authored, the human applies it via the Supabase dashboard
+  SQL Editor.
+- **Flutter apps:** built locally via `scripts/release.sh`, uploaded to
+  Play Console by hand.
 
 ---
 
-## Testing Strategy You've Chosen
+## Quick links
 
-You said: "I will not test the intermediate apk and will only test the production ready apk when backend is hosted so that I can test everything end to end."
-
-This is correct because:
-- The Flutter app is useless without the backend running (it fetches config on startup)
-- Intermediate APKs would just use fallback config, not tell you anything useful
-- End-to-end test with deployed backend = real test
-
-So Claude Code will:
-1. Build everything complete (backend + flutter shell + android config)
-2. Deploy backend first
-3. THEN build and test the APK
-
----
-
-## If Anything Goes Wrong
-
-If Claude Code gets stuck:
-
-- Check its output for errors
-- Check `/home/claude/appforge/docs/BUGS_FIXED.md` — similar bugs may appear
-- If desperate, come back to Claude.ai with a snapshot of the problem and I can help debug
-
----
-
-## Key Constraints Claude Code Must Respect
-
-These are encoded in `HANDOFF_PROMPT.md` but worth stating here:
-
-1. **DO NOT rebuild what's already done.** The admin_panel/ folder is complete and bug-fixed. Only Phase 4 (Flutter) remains.
-2. **DO NOT change the API contract.** `GET /api/config/:appId` response shape is locked. Flutter's `RemoteConfig` model must match it.
-3. **DO NOT add Firebase Remote Config or Firebase Analytics back.** We explicitly removed these.
-4. **DO NOT delete the splash screen.** Nevaid wants it kept.
-5. **DO NOT change package name after Play Store publish.**
-6. **versionCode MUST increase by 1** on every Play Store upload.
-7. **Use ONE shared Firebase project** for FCM delivery. Apps isolated via topic `app_<uuid>`.
-
----
-
-Now paste `HANDOFF_PROMPT.md` into Claude Code and let it take over. 🚀
+- `docs/ARCHITECTURE.md` — system design
+- `docs/API_CONTRACT.md` — `/api/config/:appId` JSON schema (critical for shell/admin parity)
+- `docs/PHASE_STATUS.md` — what's done vs pending
+- `docs/FEATURE_AUDIT_v1.1.1.md` — P0/P1/P2 feature audit that drove the v2 expansion
+- `CLAUDE.md` — rules of the road for any Claude session working on this repo

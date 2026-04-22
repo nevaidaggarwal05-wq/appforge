@@ -1,0 +1,33 @@
+# Maximoney — per-app metadata.
+#
+# This file is the single source of truth for per-app identifiers.
+# `scripts/release.sh maximoney` reads it to know where to write the
+# build dir, what to name artifacts, and which keystore to sign with.
+#
+# The files under `overrides/` are the app-specific files that get
+# layered on top of `flutter_shell/` by `scripts/sync-app.sh`. Edit
+# those directly (not the copy under ~/Desktop/builds/maximoney/).
+
+name:        maximoney
+display:     Maximoney
+package:     com.maximoney.credit
+webview_url: https://credit.maximoney.in
+
+# AppForge row + Firebase — used by app_config.dart
+appforge_app_id:         24984694-8a1d-47ba-a0cf-1a94e9b99839
+firebase_project:        appforge-push
+firebase_android_app_id: 1:767214826244:android:15a9975f4ba0bad62b5651
+
+# Signing (local only — key.properties is NOT committed)
+keystore_path:  ~/Desktop/maximoney-keystore.jks
+keystore_alias: maximoney
+keystore_sha256: 53:93:9B:E7:5C:5C:E8:26:44:B3:DB:1E:C4:A7:5B:19:91:F8:AC:A2:4A:DF:ED:D5:E6:BE:E2:E6:1A:E9:CF:3C
+
+# Build output
+build_dir: ~/Desktop/builds/maximoney
+out_dir:   ~/Desktop/builds/maximoney/out
+
+# Current version — update with `scripts/bump-version.sh maximoney patch|minor|major`
+# (or by hand in pubspec.yaml + android/app/build.gradle; the two must stay in sync)
+version_name: 1.2.1
+version_code: 8

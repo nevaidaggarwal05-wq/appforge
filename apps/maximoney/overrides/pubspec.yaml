@@ -1,0 +1,79 @@
+name: app_template
+description: AppForge v5 white-label Flutter shell. Wraps any website in a native app with remote config, push, biometric, and more.
+publish_to: 'none'
+version: 1.2.1+8
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # Firebase — ONLY these three (NO remote_config, NO analytics)
+  firebase_core:          ^3.6.0
+  firebase_crashlytics:   ^4.1.3
+  firebase_messaging:     ^15.1.3
+
+  # WebView — flutter_inappwebview for native SwipeRefreshLayout,
+  # proper position:fixed CSS support, and full intent:// scheme handling.
+  flutter_inappwebview:   ^6.1.5
+
+  # HTTP client to AppForge backend
+  dio:                    ^5.7.0
+
+  # Storage + platform
+  shared_preferences:     ^2.3.2
+  flutter_secure_storage: ^9.2.2
+  connectivity_plus:      ^6.1.0
+  package_info_plus:      ^8.1.0
+  path_provider:          ^2.1.5
+
+  # Native features
+  url_launcher:           ^6.3.1
+  local_auth:             ^2.3.0
+  device_info_plus:       ^10.1.0
+  in_app_review:          ^2.0.9
+  in_app_update:          ^4.2.3
+  flutter_local_notifications: ^17.2.3
+  flutter_native_splash:  ^2.4.1
+  permission_handler:     ^11.3.1
+  image_picker:           ^1.1.2
+  file_picker:            ^8.1.4
+  flutter_image_compress: ^2.3.0
+  flutter_downloader:     ^1.11.8
+  flutter_custom_tabs:    ^2.1.0
+  share_plus:             ^10.1.2
+  mobile_scanner:         ^5.2.3
+  geolocator:             ^13.0.2
+  app_links:              ^6.3.2
+  intl:                   ^0.20.2
+
+  # Ads (off by default, gated by remote flag)
+  google_mobile_ads:      ^5.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints:          ^5.0.0
+
+flutter:
+  uses-material-design: true
+  generate: true
+  # No bundled assets — splash logo is loaded remotely via Image.network
+  # from the logo_url in the remote config.
+
+# flutter_native_splash config — per-app values are overridden by the
+# sync script (builds/<app>/pubspec.yaml) before `dart run flutter_native_splash:create`.
+flutter_native_splash:
+  color: "#FFFFFF"
+  color_dark: "#111111"
+  android_12:
+    color: "#FFFFFF"
+    color_dark: "#111111"
+  android: true
+  ios: true
+  web: false

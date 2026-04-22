@@ -14,3 +14,20 @@ key.properties
 .claude/
 .vscode/
 .idea/
+
+# Flutter-generated cruft inside flutter_shell/ + apps/*/overrides/
+.flutter-plugins
+.flutter-plugins-dependencies
+flutter_shell/android/local.properties
+flutter_shell/ios/Flutter/Generated.xcconfig
+flutter_shell/ios/Flutter/flutter_export_environment.sh
+flutter_shell/android/app/google-services.json
+apps/*/overrides/android/app/google-services.json
+apps/*/overrides/android/local.properties
+
+# Build dirs (regenerable from flutter_shell + apps/<app>/overrides)
+# Kept outside the repo at ~/Desktop/builds/<app>/ but ignore any
+# accidental in-tree copies too.
+**/flutter-apk/
+**/outputs/bundle/
+**/outputs/apk/
