@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/network_quality_service.dart';
-import 'bootstrap_screen.dart';
+import 'splash_screen.dart';
 
 class NoInternetScreen extends StatelessWidget {
   const NoInternetScreen({super.key});
@@ -34,7 +34,7 @@ class NoInternetScreen extends StatelessWidget {
                     if (!context.mounted) return;
                     if (online) {
                       Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (_) => const BootstrapScreen()),
+                        MaterialPageRoute(builder: (_) => const SplashScreen()),
                       );
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(

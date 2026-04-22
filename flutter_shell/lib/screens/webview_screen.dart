@@ -111,10 +111,16 @@ class _WebViewScreenState extends State<WebViewScreen> {
     super.dispose();
   }
 
-  /// Pulls the platform default UA, strips the WebView marker(s), and
-  /// appends any admin-configured suffix. Falls back silently if the
-  /// native call fails — we'd rather ship the default UA than block
-  /// the WebView from ever rendering.
+  /// Build a user-agent string that payment gateways accept as "real
+  /// Chrome". The default Android WebView UA contains a `"; wv"` marker
+  /// that causes Razorpay and similar JS to hide UPI intent options
+  /// (their logic: "this is a WebView, it can't resolve intent://").
+  /// Ours CAN — see `_handleAndroidIntent` — so we strip the marker.
+  ///
+  /// Belt-and-suspenders: if the platform UA is empty, still contains a
+  /// `wv` token after stripping, or doesn't look like Chrome, synthesize
+  /// a Chrome UA from device info. That way UPI detection can never
+  /// regress back to "hidden" because of a platform quirk.
   Future<void> _prepareUserAgent() async {
     String ua = '';
     try {
@@ -123,21 +129,30 @@ class _WebViewScreenState extends State<WebViewScreen> {
       Log.w('[webview] getDefaultUserAgent failed: $e');
     }
 
-    if (ua.isNotEmpty) {
-      // Android WebView UA looks like:
-      //   Mozilla/5.0 (Linux; Android 14; Pixel 7 Build/…; wv) AppleWebKit/…
-      // We need to remove "; wv" inside that parenthesised segment.
-      ua = ua
-          .replaceAll(RegExp(r';\s*wv\)'), ')')   // "; wv)" → ")"
-          .replaceAll(RegExp(r'\s*wv\)'),  ')')   // " wv)"  → ")"
-          .replaceAll(RegExp(r'\s{2,}'),   ' ')   // collapse doubles
-          .trim();
+    // Strip webview markers inside the parenthesised segment.
+    ua = ua
+        .replaceAll(RegExp(r';\s*wv\)'), ')')
+        .replaceAll(RegExp(r'\s+wv\)'),  ')')
+        .replaceAll(RegExp(r'\s{2,}'),   ' ')
+        .trim();
+
+    final looksLikeChrome = ua.contains('Chrome/');
+    final stillHasWv      = RegExp(r'\bwv\b').hasMatch(ua);
+
+    if (ua.isEmpty || stillHasWv || !looksLikeChrome) {
+      // Synthesize a standard Android Chrome UA from device info.
+      // Chrome version is pinned to a recent stable; gateways only
+      // care that it IS Chrome, not which exact build.
+      final device = await DeviceInfoService.load();
+      final androidVersion = device.osVersion.replaceFirst('Android ', '').trim();
+      final model = device.deviceModel.isNotEmpty ? device.deviceModel : 'Android';
+      ua = 'Mozilla/5.0 (Linux; Android $androidVersion; $model) '
+           'AppleWebKit/537.36 (KHTML, like Gecko) '
+           'Chrome/120.0.6099.210 Mobile Safari/537.36';
     }
 
     final suffix = RemoteConfigService.userAgentSuffix ?? '';
-    if (suffix.isNotEmpty) {
-      ua = ua.isEmpty ? suffix : '$ua $suffix';
-    }
+    if (suffix.isNotEmpty) ua = '$ua $suffix';
 
     if (!mounted) return;
     setState(() => _userAgent = ua);
@@ -201,6 +216,23 @@ class _WebViewScreenState extends State<WebViewScreen> {
   }
 
   // ── Navigation intercept ───────────────────────────────────────
+  //
+  // Policy (intentionally unopinionated):
+  //   • http/https  → ALWAYS load in the WebView. No host allowlist,
+  //                   no automatic OAuth/CustomTabs handoff, no
+  //                   external-browser kick-outs. If a payment flow
+  //                   redirects to a bank's 3-D Secure page on some
+  //                   random domain, it loads right here. If the user
+  //                   ever gets stuck, they kill and relaunch — that's
+  //                   the product's stated UX rule.
+  //   • intent://   → Android Intent resolver (UPI apps, PhonePe deep
+  //                   links, etc.) — resolved via _handleAndroidIntent.
+  //   • any other   → hand off to the OS (tel, mailto, sms, upi,
+  //                   market, whatsapp, fb, custom app schemes, …).
+  //
+  // CustomTabsService is intentionally NOT invoked automatically any
+  // more. The `window.flutter.openCustomTab(url)` JS bridge method
+  // still exists for websites that want to opt in explicitly.
 
   Future<NavigationActionPolicy?> _onNavRequest(
     InAppWebViewController controller,
@@ -208,74 +240,19 @@ class _WebViewScreenState extends State<WebViewScreen> {
   ) async {
     final uri = action.request.url;
     if (uri == null) return NavigationActionPolicy.ALLOW;
-    final url = uri.toString();
 
-    // Simple handoff schemes
-    if (uri.scheme == 'tel' ||
-        uri.scheme == 'mailto' ||
-        uri.scheme == 'sms' ||
-        uri.scheme == 'upi') {
-      await _launchExternal(uri.rawValue);
-      return NavigationActionPolicy.CANCEL;
+    if (uri.scheme == 'http' || uri.scheme == 'https') {
+      return NavigationActionPolicy.ALLOW;
     }
 
-    // Play Store
-    if (uri.scheme == 'market' || url.startsWith('https://play.google.com/store/apps')) {
-      await _launchExternal(uri.rawValue);
-      return NavigationActionPolicy.CANCEL;
-    }
-
-    // Android intent:// — Razorpay UPI intent flow, PhonePe app links, etc.
     if (uri.scheme == 'intent') {
-      await _handleAndroidIntent(url);
+      await _handleAndroidIntent(uri.toString());
       return NavigationActionPolicy.CANCEL;
     }
 
-    // OAuth hosts — open in a Chrome Custom Tab / SFSafariViewController
-    // so providers that refuse WebView auth (Google, Apple, Microsoft,
-    // any admin-configured host) can complete the flow.
-    if (CustomTabsService.shouldHandle(uri)) {
-      if (mounted) await CustomTabsService.launch(context, uri);
-      return NavigationActionPolicy.CANCEL;
-    }
-
-    // External host → launch browser / third-party app
-    if (!_isAllowedHost(uri.host)) {
-      await _launchExternal(uri.rawValue);
-      return NavigationActionPolicy.CANCEL;
-    }
-
-    return NavigationActionPolicy.ALLOW;
-  }
-
-  /// Host allowlist — intentionally permissive by default.
-  ///
-  /// If the admin leaves `extra_allowed_hosts` empty, we allow **every**
-  /// http(s) host to load inside the WebView. That's critical for
-  /// payment flows: Razorpay redirects to `api.razorpay.com`,
-  /// `checkout.razorpay.com`, and then to bank 3-D Secure pages on
-  /// arbitrary domains — kicking any of those out to the system
-  /// browser breaks the payment because the callback never returns
-  /// to the merchant page.
-  ///
-  /// Only when the admin explicitly configures an allowlist do we
-  /// enforce it (primary host is always implicitly allowed).
-  bool _isAllowedHost(String host) {
-    if (host.isEmpty) return true; // relative navigation inside current doc
-    final extras = RemoteConfigService.extraAllowedHosts;
-    if (extras.isEmpty) return true; // permissive default — see doc above
-    final primary = Uri.tryParse(RemoteConfigService.appUrl)?.host ?? '';
-    final allowed = [primary, ...extras].where((h) => h.isNotEmpty);
-    for (final a in allowed) {
-      if (_sameOrSubHost(host, a)) return true;
-    }
-    return false;
-  }
-
-  bool _sameOrSubHost(String a, String b) {
-    final aa = a.toLowerCase();
-    final bb = b.toLowerCase();
-    return aa == bb || aa.endsWith('.$bb') || bb.endsWith('.$aa');
+    // tel / mailto / sms / upi / market / whatsapp / fb / any custom scheme
+    await _launchExternal(uri.rawValue);
+    return NavigationActionPolicy.CANCEL;
   }
 
   Future<void> _handleAndroidIntent(String url) async {

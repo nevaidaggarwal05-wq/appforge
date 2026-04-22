@@ -56,6 +56,26 @@ class RemoteConfigService {
     );
   }
 
+  /// Public re-fetch. Callers: splash boot (after FCM initializes so the
+  /// token reaches the backend) and any future "force refresh" button.
+  /// The first [initialize] already populated [_current] from cache, so
+  /// callers can keep using RemoteConfigService accessors while this
+  /// runs in the background.
+  static Future<bool> refresh({
+    String? fcmToken,
+    String? platform,
+    String? deviceModel,
+    String? osVersion,
+    String? appVersion,
+  }) =>
+      _refresh(
+        fcmToken: fcmToken,
+        platform: platform,
+        deviceModel: deviceModel,
+        osVersion: osVersion,
+        appVersion: appVersion,
+      );
+
   static Future<bool> _refresh({
     String? fcmToken,
     String? platform,
