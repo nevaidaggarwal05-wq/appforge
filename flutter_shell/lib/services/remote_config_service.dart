@@ -24,14 +24,45 @@ class RemoteConfigService {
     String? osVersion,
     String? appVersion,
   }) async {
-    // 1. Load cache first
+    // 1. Load cache first — this is the FAST path. If we have a cached
+    //    config we proceed immediately and refresh in the background so
+    //    cold start is not blocked on a network round-trip.
     final cached = await CacheService.loadConfig();
     if (cached != null) {
       _current = cached;
-      Log.i('[config] Loaded cache from ${cached.fetchedAt.toIso8601String()}');
+      _initialized = true;
+      Log.i('[config] cache hit (${cached.fetchedAt.toIso8601String()}) — refreshing in background');
+
+      // Fire-and-forget background refresh.
+      // Awaited upsert/save still happens inside _refresh; just not awaited here.
+      // ignore: unawaited_futures
+      _refresh(
+        fcmToken: fcmToken,
+        platform: platform,
+        deviceModel: deviceModel,
+        osVersion: osVersion,
+        appVersion: appVersion,
+      );
+      return true;
     }
 
-    // 2. Try fresh fetch
+    // 2. No cache → must block on fresh fetch.
+    return _refresh(
+      fcmToken: fcmToken,
+      platform: platform,
+      deviceModel: deviceModel,
+      osVersion: osVersion,
+      appVersion: appVersion,
+    );
+  }
+
+  static Future<bool> _refresh({
+    String? fcmToken,
+    String? platform,
+    String? deviceModel,
+    String? osVersion,
+    String? appVersion,
+  }) async {
     try {
       final api = ConfigApi(ApiClient(baseUrl: AppConfig.appforgeApiBaseUrl));
       final fresh = await api.fetch(

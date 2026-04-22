@@ -62,9 +62,19 @@ class _WebViewScreenState extends State<WebViewScreen> {
   Timer? _loadTimeoutTimer;
   bool _timedOut = false;
 
+  // Cleaned User-Agent. We strip the "; wv" WebView marker so payment
+  // gateways (Razorpay, PhonePe, etc.) stop hiding UPI intent options —
+  // their JS uses that substring to decide "this is a default WebView,
+  // can't launch intent:// URIs" and collapses the UPI section. Our
+  // WebView *can* resolve intent:// via shouldOverrideUrlLoading, so
+  // the detection is a false positive for us.
+  String? _userAgent;
+
   @override
   void initState() {
     super.initState();
+
+    _prepareUserAgent();
 
     // Wire native SwipeRefreshLayout only if admin-enabled. The controller
     // has to be constructed here (not in build) because InAppWebView captures
@@ -99,6 +109,38 @@ class _WebViewScreenState extends State<WebViewScreen> {
     NotificationService.deepLinkUrl.removeListener(_onDeepLink);
     _loadTimeoutTimer?.cancel();
     super.dispose();
+  }
+
+  /// Pulls the platform default UA, strips the WebView marker(s), and
+  /// appends any admin-configured suffix. Falls back silently if the
+  /// native call fails — we'd rather ship the default UA than block
+  /// the WebView from ever rendering.
+  Future<void> _prepareUserAgent() async {
+    String ua = '';
+    try {
+      ua = await InAppWebViewController.getDefaultUserAgent();
+    } catch (e) {
+      Log.w('[webview] getDefaultUserAgent failed: $e');
+    }
+
+    if (ua.isNotEmpty) {
+      // Android WebView UA looks like:
+      //   Mozilla/5.0 (Linux; Android 14; Pixel 7 Build/…; wv) AppleWebKit/…
+      // We need to remove "; wv" inside that parenthesised segment.
+      ua = ua
+          .replaceAll(RegExp(r';\s*wv\)'), ')')   // "; wv)" → ")"
+          .replaceAll(RegExp(r'\s*wv\)'),  ')')   // " wv)"  → ")"
+          .replaceAll(RegExp(r'\s{2,}'),   ' ')   // collapse doubles
+          .trim();
+    }
+
+    final suffix = RemoteConfigService.userAgentSuffix ?? '';
+    if (suffix.isNotEmpty) {
+      ua = ua.isEmpty ? suffix : '$ua $suffix';
+    }
+
+    if (!mounted) return;
+    setState(() => _userAgent = ua);
   }
 
   String _resolveStartUrl() {
@@ -206,15 +248,28 @@ class _WebViewScreenState extends State<WebViewScreen> {
     return NavigationActionPolicy.ALLOW;
   }
 
+  /// Host allowlist — intentionally permissive by default.
+  ///
+  /// If the admin leaves `extra_allowed_hosts` empty, we allow **every**
+  /// http(s) host to load inside the WebView. That's critical for
+  /// payment flows: Razorpay redirects to `api.razorpay.com`,
+  /// `checkout.razorpay.com`, and then to bank 3-D Secure pages on
+  /// arbitrary domains — kicking any of those out to the system
+  /// browser breaks the payment because the callback never returns
+  /// to the merchant page.
+  ///
+  /// Only when the admin explicitly configures an allowlist do we
+  /// enforce it (primary host is always implicitly allowed).
   bool _isAllowedHost(String host) {
     if (host.isEmpty) return true; // relative navigation inside current doc
+    final extras = RemoteConfigService.extraAllowedHosts;
+    if (extras.isEmpty) return true; // permissive default — see doc above
     final primary = Uri.tryParse(RemoteConfigService.appUrl)?.host ?? '';
-    final extras  = RemoteConfigService.extraAllowedHosts;
-    final allowed = [primary, ...extras].where((h) => h.isNotEmpty).toList();
+    final allowed = [primary, ...extras].where((h) => h.isNotEmpty);
     for (final a in allowed) {
       if (_sameOrSubHost(host, a)) return true;
     }
-    return allowed.isEmpty; // if nothing configured, allow everything
+    return false;
   }
 
   bool _sameOrSubHost(String a, String b) {
@@ -604,8 +659,17 @@ class _WebViewScreenState extends State<WebViewScreen> {
   Widget build(BuildContext context) {
     final startUrl = _resolveStartUrl();
     final pinchZoom = RemoteConfigService.pinchToZoom;
-    final uaSuffix  = RemoteConfigService.userAgentSuffix ?? '';
     final longPressDisabled = RemoteConfigService.longPressDisabled;
+    final ua = _userAgent;
+
+    // Hold the WebView until the UA has been prepared. Mounting it with
+    // the default UA and then swapping would cause an immediate reload
+    // mid-boot — worse UX than a sub-second spinner.
+    if (ua == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     final initialSettings = InAppWebViewSettings(
       // Core
@@ -623,8 +687,8 @@ class _WebViewScreenState extends State<WebViewScreen> {
       allowsBackForwardNavigationGestures: true,
       allowsInlineMediaPlayback: true,
       suppressesIncrementalRendering: false,
-      // UA suffix
-      applicationNameForUserAgent: uaSuffix.isNotEmpty ? uaSuffix : null,
+      // User-Agent — cleaned of "wv" marker so Razorpay/PhonePe show UPI.
+      userAgent: ua.isNotEmpty ? ua : null,
       // Zoom — flagged
       supportZoom: pinchZoom,
       builtInZoomControls: pinchZoom,
