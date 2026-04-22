@@ -6,6 +6,7 @@ import 'package:in_app_update/in_app_update.dart';
 import '../app_config.dart';
 import '../services/analytics_service.dart';
 import '../services/device_info_service.dart';
+import '../services/intent_bridge_service.dart';
 import '../services/network_quality_service.dart';
 import '../services/notification_service.dart';
 import '../services/remote_config_service.dart';
@@ -76,6 +77,14 @@ class _SplashScreenState extends State<SplashScreen> {
 
     AnalyticsService.deviceId   = device.deviceId;
     AnalyticsService.appVersion = device.appVersion;
+
+    // Apply admin-panel screenshot block (FLAG_SECURE). Off by
+    // default, flipped here only if the `screenshot_block` flag is
+    // true in remote config. Done BEFORE pushing the WebView so the
+    // flag is in effect the moment any authenticated content paints.
+    unawaited(
+      IntentBridgeService.setSecureFlag(RemoteConfigService.screenshotBlock),
+    );
 
     // ── Background work — nothing here blocks the WebView ─────────
     unawaited(_initFcmAndPushToken(device));

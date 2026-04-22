@@ -33,6 +33,7 @@ import '../services/custom_tabs_service.dart';
 import '../services/device_info_service.dart';
 import '../services/download_service.dart';
 import '../services/haptic_service.dart';
+import '../services/intent_bridge_service.dart';
 import '../services/location_service.dart';
 import '../services/notification_service.dart';
 import '../services/rating_service.dart';
@@ -246,24 +247,42 @@ class _WebViewScreenState extends State<WebViewScreen> {
   }
 
   Future<void> _handleAndroidIntent(String url) async {
+    // Primary path: native Intent.parseUri via MainActivity method
+    // channel. This is the ONLY way `intent://…#Intent;…;end` URIs
+    // (GPay, PhonePe, bank deep links, Razorpay's UPI app-chooser)
+    // actually dispatch — `url_launcher` can't parse that scheme and
+    // silently returns false, which was the root cause of v1.2.3+10's
+    // "UPI icons show but do nothing when tapped" bug.
+    //
+    // Returns true when an activity launched, including via
+    // browser_fallback_url or Play Store fallback — so we only fall
+    // through to the legacy synth-upi path if the native bridge is
+    // genuinely unreachable (iOS, or the channel wasn't registered).
     try {
-      if (defaultTargetPlatform == TargetPlatform.android) {
-        final ok = await launchUrl(
-          Uri.parse(url),
-          mode: LaunchMode.externalApplication,
-        );
-        if (ok) return;
-      }
+      if (await IntentBridgeService.launchIntent(url)) return;
+    } catch (e) {
+      Log.w('[intent] native bridge threw: $e');
+    }
 
-      final lower = url.toLowerCase();
-      final fallbackRe = RegExp(r'S\.browser_fallback_url=([^;]+);', caseSensitive: false);
+    // Legacy fallback — kept for safety. Only exercised if native
+    // bridge above reports false. Extracts S.browser_fallback_url by
+    // regex and, as a last resort, tries to re-synthesize common UPI
+    // schemes from the query so an installed UPI app can pick it up.
+    try {
+      final fallbackRe = RegExp(
+        r'S\.browser_fallback_url=([^;]+);',
+        caseSensitive: false,
+      );
       final fallbackMatch = fallbackRe.firstMatch(url);
       if (fallbackMatch != null) {
         final decoded = Uri.decodeComponent(fallbackMatch.group(1)!);
-        if (await launchUrl(Uri.parse(decoded),
-            mode: LaunchMode.externalApplication)) return;
+        if (await launchUrl(
+          Uri.parse(decoded),
+          mode: LaunchMode.externalApplication,
+        )) return;
       }
 
+      final lower = url.toLowerCase();
       if (lower.contains('upi') ||
           lower.contains('paisa.user') ||
           lower.contains('phonepe') ||

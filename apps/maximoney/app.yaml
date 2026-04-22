@@ -29,5 +29,5 @@ out_dir:   ~/Desktop/builds/maximoney/out
 
 # Current version — update with `scripts/bump-version.sh maximoney patch|minor|major`
 # (or by hand in pubspec.yaml + android/app/build.gradle; the two must stay in sync)
-version_name: 1.2.3
-version_code: 10
+version_name: 1.2.4
+version_code: 11

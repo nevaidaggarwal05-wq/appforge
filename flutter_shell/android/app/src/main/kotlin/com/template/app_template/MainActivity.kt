@@ -1,5 +1,113 @@
 package com.template.app_template
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
+import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
 
-class MainActivity : FlutterActivity()
+/**
+ * TEMPLATE — the shell's MainActivity. Each per-app fork replaces
+ * this at its own package path (e.g. com.maximoney.credit). The
+ * per-app sync (`scripts/sync-app.sh`) excludes this `com/template/`
+ * directory on copy, so the override's MainActivity is the one that
+ * actually ships.
+ *
+ * Keep this file in sync with each app's MainActivity so that a new
+ * app's override starts from a known-good baseline. See
+ * `apps/maximoney/overrides/android/app/src/main/kotlin/com/maximoney/credit/MainActivity.kt`.
+ */
+class MainActivity : FlutterActivity() {
+    private val channelName = "appforge/native"
+
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "launchIntent" -> {
+                        val url = call.argument<String>("url")
+                        if (url.isNullOrBlank()) {
+                            result.success(false)
+                        } else {
+                            result.success(launchIntentUri(url))
+                        }
+                    }
+                    "setSecureFlag" -> {
+                        val enabled = call.argument<Boolean>("enabled") ?: false
+                        runOnUiThread {
+                            if (enabled) {
+                                window.setFlags(
+                                    WindowManager.LayoutParams.FLAG_SECURE,
+                                    WindowManager.LayoutParams.FLAG_SECURE
+                                )
+                            } else {
+                                window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                            }
+                        }
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+    }
+
+    private fun launchIntentUri(url: String): Boolean {
+        val intent: Intent = try {
+            Intent.parseUri(url, Intent.URI_INTENT_SCHEME)
+        } catch (e: Exception) {
+            return false
+        }
+
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        intent.component = null
+        intent.selector = null
+
+        try {
+            startActivity(intent)
+            return true
+        } catch (_: ActivityNotFoundException) {
+        } catch (_: SecurityException) {
+        }
+
+        val fallback = intent.getStringExtra("browser_fallback_url")
+        if (!fallback.isNullOrBlank()) {
+            try {
+                startActivity(
+                    Intent(Intent.ACTION_VIEW, Uri.parse(fallback))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+                return true
+            } catch (_: Exception) {
+            }
+        }
+
+        val pkg = intent.`package`
+        if (!pkg.isNullOrBlank()) {
+            return try {
+                startActivity(
+                    Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$pkg"))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+                true
+            } catch (_: Exception) {
+                try {
+                    startActivity(
+                        Intent(
+                            Intent.ACTION_VIEW,
+                            Uri.parse("https://play.google.com/store/apps/details?id=$pkg")
+                        ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                    true
+                } catch (_: Exception) {
+                    false
+                }
+            }
+        }
+
+        return false
+    }
+}
