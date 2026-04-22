@@ -32,4 +32,12 @@ class SessionService {
     final s = prefs.getString(_kFirstOpenAt);
     return s == null ? null : DateTime.tryParse(s);
   }
+
+  /// Wipes all session keys. Called by hard cache-clear.
+  /// Intentionally preserves `_kFirstOpenAt` for analytics continuity.
+  static Future<void> clearSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await CacheService.clearLastUrl();
+    await prefs.remove(_kSessionCount);
+  }
 }

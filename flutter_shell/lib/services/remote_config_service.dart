@@ -85,4 +85,13 @@ class RemoteConfigService {
   static String  get softUpdateMessage  => _current.softUpdate.message;
   static String  get updateChangelog    => _current.forceUpdate.changelog;
   static Map<String, dynamic> get custom => _current.custom;
+
+  // Migration 002 additions
+  static bool      get pinchToZoom         => _current.features.pinchToZoom;
+  static bool      get pullToRefresh       => _current.features.pullToRefresh;
+  static String?   get whatsappNumber      => _current.whatsapp.number;
+  static String    get whatsappMessage     => _current.whatsapp.message;
+  static String    get admobPosition       => _current.admob.position; // 'none'|'top'|'bottom'
+  static DateTime? get cacheSoftClearAt    => _current.cache.softClearAt;
+  static DateTime? get cacheHardClearAt    => _current.cache.hardClearAt;
 }

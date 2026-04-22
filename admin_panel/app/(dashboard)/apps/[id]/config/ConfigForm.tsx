@@ -135,6 +135,30 @@ export default function ConfigForm({ app }: { app: App }) {
         </Field>
       </Card>
 
+      {/* ── WebView behaviour ───────────────────────── */}
+      <Card title="WebView behaviour" description="Native gestures inside the WebView. Changes live within 60 seconds.">
+        <Field label="Pinch to zoom" inline hint="Allow users to pinch-zoom the page content">
+          <Switch checked={f.pinch_to_zoom} onChange={v => set('pinch_to_zoom', v)} />
+        </Field>
+        <Field label="Pull to refresh" inline hint="Native Android SwipeRefreshLayout — swipe down to reload the page">
+          <Switch checked={f.pull_to_refresh} onChange={v => set('pull_to_refresh', v)} />
+        </Field>
+      </Card>
+
+      {/* ── WhatsApp share ──────────────────────────── */}
+      {f.whatsapp_share && (
+        <Card title="WhatsApp share" description="Used by the floating share button.">
+          <Field label="WhatsApp number" hint="Include country code, no +. Example: 919958421835">
+            <input value={f.whatsapp_number || ''} onChange={e => set('whatsapp_number', e.target.value)}
+              className="input font-mono text-sm" placeholder="919958421835" />
+          </Field>
+          <Field label="Share message" hint="Pre-filled text when users tap the share button">
+            <input value={f.whatsapp_message || ''} onChange={e => set('whatsapp_message', e.target.value)}
+              className="input" placeholder="Check out this app" />
+          </Field>
+        </Card>
+      )}
+
       {/* ── Force update ────────────────────────────── */}
       <Card title="Force update" description="Blocks users below this version code. Set 0 to disable.">
         <Field label="Minimum versionCode" hint="Users with lower versionCode see the Update Required screen">
@@ -174,8 +198,53 @@ export default function ConfigForm({ app }: { app: App }) {
             <input value={f.admob_banner_unit_id || ''} onChange={e => set('admob_banner_unit_id', e.target.value)}
               className="input font-mono text-sm" placeholder="ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX" />
           </Field>
+          <Field label="Banner position" hint="Where the banner is pinned inside the app frame">
+            <select value={f.admob_position} onChange={e => set('admob_position', e.target.value as 'none' | 'top' | 'bottom')}
+              className="input">
+              <option value="none">None (don't show banner)</option>
+              <option value="top">Top</option>
+              <option value="bottom">Bottom</option>
+            </select>
+          </Field>
         </Card>
       )}
+
+      {/* ── Cache controls ──────────────────────────── */}
+      <Card title="Clear app cache" description="Force every installed app to wipe its WebView cache on next open. Takes effect within 60 seconds.">
+        <div className="flex flex-col gap-3">
+          <div className="text-xs text-muted-foreground">
+            <strong>Soft clear:</strong> drops HTTP cache only. Users stay logged in.<br />
+            <strong>Hard clear:</strong> drops cache + cookies + localStorage. Users are logged out.
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              variant="secondary"
+              onClick={async () => {
+                const res = await fetch(`/api/apps/${app.id}/cache-clear?kind=soft`, { method: 'POST' });
+                if (res.ok) { toast.success('Soft cache clear scheduled — live within 60s'); }
+                else        { toast.error('Failed to schedule cache clear'); }
+              }}
+            >
+              Soft clear (keep login)
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={async () => {
+                if (!confirm('Hard clear will log out all users on next open. Continue?')) return;
+                const res = await fetch(`/api/apps/${app.id}/cache-clear?kind=hard`, { method: 'POST' });
+                if (res.ok) { toast.success('Hard cache clear scheduled — live within 60s'); }
+                else        { toast.error('Failed to schedule cache clear'); }
+              }}
+            >
+              Hard clear (force logout)
+            </Button>
+          </div>
+          <div className="text-xs text-muted-foreground pt-1">
+            Last soft clear: {f.cache_soft_clear_at ? new Date(f.cache_soft_clear_at).toLocaleString() : '—'}<br />
+            Last hard clear: {f.cache_hard_clear_at ? new Date(f.cache_hard_clear_at).toLocaleString() : '—'}
+          </div>
+        </div>
+      </Card>
 
       {/* ── Store links ─────────────────────────────── */}
       <Card title="Store links" description="Used by the Update and Rate-us prompts. Fill in after publish.">

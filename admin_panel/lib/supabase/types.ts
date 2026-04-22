@@ -66,6 +66,15 @@ export interface App {
   android_status: AppStatus;
   ios_status: AppStatus;
 
+  // runtime-configurable behaviour (migration 002)
+  pinch_to_zoom: boolean;
+  pull_to_refresh: boolean;
+  whatsapp_number: string | null;
+  whatsapp_message: string;
+  admob_position: 'none' | 'top' | 'bottom';
+  cache_soft_clear_at: string | null;
+  cache_hard_clear_at: string | null;
+
   // escape hatch
   custom_config: Record<string, unknown>;
 
@@ -126,7 +135,12 @@ export interface RemoteConfigResponse {
     root_block: boolean;
     session_persistence: boolean;
     network_detection: boolean;
+    pinch_to_zoom: boolean;
+    pull_to_refresh: boolean;
   };
+  whatsapp: { number: string | null; message: string };
+  admob: { position: 'none' | 'top' | 'bottom' };
+  cache: { soft_clear_at: string | null; hard_clear_at: string | null };
   force_update: { min_version_code: number; message: string; changelog: string };
   soft_update:  { min_version_code: number; message: string; changelog: string };
   custom: Record<string, unknown>;

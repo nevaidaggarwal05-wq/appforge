@@ -58,6 +58,8 @@ class FeatureFlags {
   final bool rootBlock;
   final bool sessionPersistence;
   final bool networkDetection;
+  final bool pinchToZoom;
+  final bool pullToRefresh;
 
   const FeatureFlags({
     required this.whatsappShare,
@@ -68,6 +70,8 @@ class FeatureFlags {
     required this.rootBlock,
     required this.sessionPersistence,
     required this.networkDetection,
+    required this.pinchToZoom,
+    required this.pullToRefresh,
   });
 
   factory FeatureFlags.fromJson(Map<String, dynamic> j) => FeatureFlags(
@@ -79,6 +83,8 @@ class FeatureFlags {
         rootBlock:          j['root_block']          as bool? ?? true,
         sessionPersistence: j['session_persistence'] as bool? ?? true,
         networkDetection:   j['network_detection']   as bool? ?? true,
+        pinchToZoom:        j['pinch_to_zoom']       as bool? ?? true,
+        pullToRefresh:      j['pull_to_refresh']     as bool? ?? true,
       );
 
   Map<String, dynamic> toJson() => {
@@ -90,6 +96,8 @@ class FeatureFlags {
         'root_block':          rootBlock,
         'session_persistence': sessionPersistence,
         'network_detection':   networkDetection,
+        'pinch_to_zoom':       pinchToZoom,
+        'pull_to_refresh':     pullToRefresh,
       };
 
   static const fallback = FeatureFlags(
@@ -101,7 +109,50 @@ class FeatureFlags {
     rootBlock: true,
     sessionPersistence: true,
     networkDetection: true,
+    pinchToZoom: true,
+    pullToRefresh: true,
   );
+}
+
+class WhatsAppConfig {
+  final String? number;
+  final String message;
+  const WhatsAppConfig({required this.number, required this.message});
+  factory WhatsAppConfig.fromJson(Map<String, dynamic> j) => WhatsAppConfig(
+        number:  j['number']  as String?,
+        message: j['message'] as String? ?? 'Check out this app',
+      );
+  Map<String, dynamic> toJson() => {'number': number, 'message': message};
+  static const fallback = WhatsAppConfig(number: null, message: 'Check out this app');
+}
+
+class AdMobConfig {
+  final String position; // 'none' | 'top' | 'bottom'
+  const AdMobConfig({required this.position});
+  factory AdMobConfig.fromJson(Map<String, dynamic> j) => AdMobConfig(
+        position: j['position'] as String? ?? 'none',
+      );
+  Map<String, dynamic> toJson() => {'position': position};
+  static const fallback = AdMobConfig(position: 'none');
+}
+
+class CacheConfig {
+  final DateTime? softClearAt;
+  final DateTime? hardClearAt;
+  const CacheConfig({required this.softClearAt, required this.hardClearAt});
+  factory CacheConfig.fromJson(Map<String, dynamic> j) => CacheConfig(
+        softClearAt: _parse(j['soft_clear_at']),
+        hardClearAt: _parse(j['hard_clear_at']),
+      );
+  static DateTime? _parse(dynamic v) {
+    if (v == null || v is! String || v.isEmpty) return null;
+    return DateTime.tryParse(v);
+  }
+  Map<String, dynamic> toJson() => {
+        'soft_clear_at': softClearAt?.toIso8601String(),
+        'hard_clear_at': hardClearAt?.toIso8601String(),
+      };
+  static const fallback = CacheConfig(softClearAt: null, hardClearAt: null);
 }
 
 class UpdateConfig {
@@ -135,6 +186,9 @@ class RemoteConfig {
   final SplashConfig splash;
   final ThemeConfig theme;
   final FeatureFlags features;
+  final WhatsAppConfig whatsapp;
+  final AdMobConfig admob;
+  final CacheConfig cache;
   final UpdateConfig forceUpdate;
   final UpdateConfig softUpdate;
   final Map<String, dynamic> custom;
@@ -145,6 +199,9 @@ class RemoteConfig {
     required this.splash,
     required this.theme,
     required this.features,
+    required this.whatsapp,
+    required this.admob,
+    required this.cache,
     required this.forceUpdate,
     required this.softUpdate,
     required this.custom,
@@ -156,6 +213,9 @@ class RemoteConfig {
         splash:      SplashConfig.fromJson((j['splash'] ?? {}) as Map<String, dynamic>),
         theme:       ThemeConfig.fromJson((j['theme']  ?? {}) as Map<String, dynamic>),
         features:    FeatureFlags.fromJson((j['features'] ?? {}) as Map<String, dynamic>),
+        whatsapp:    WhatsAppConfig.fromJson((j['whatsapp'] ?? {}) as Map<String, dynamic>),
+        admob:       AdMobConfig.fromJson((j['admob']    ?? {}) as Map<String, dynamic>),
+        cache:       CacheConfig.fromJson((j['cache']    ?? {}) as Map<String, dynamic>),
         forceUpdate: UpdateConfig.fromJson((j['force_update'] ?? {}) as Map<String, dynamic>),
         softUpdate:  UpdateConfig.fromJson((j['soft_update']  ?? {}) as Map<String, dynamic>),
         custom:      Map<String, dynamic>.from((j['custom'] ?? {}) as Map),
@@ -167,6 +227,9 @@ class RemoteConfig {
         'splash':       splash.toJson(),
         'theme':        theme.toJson(),
         'features':     features.toJson(),
+        'whatsapp':     whatsapp.toJson(),
+        'admob':        admob.toJson(),
+        'cache':        cache.toJson(),
         'force_update': forceUpdate.toJson(),
         'soft_update':  softUpdate.toJson(),
         'custom':       custom,
@@ -187,6 +250,9 @@ class RemoteConfig {
           accent:  AppConfig.fallbackAccent,
         ),
         features: FeatureFlags.fallback,
+        whatsapp: WhatsAppConfig.fallback,
+        admob:    AdMobConfig.fallback,
+        cache:    CacheConfig.fallback,
         forceUpdate: UpdateConfig.fallback,
         softUpdate:  UpdateConfig.fallback,
         custom: const {},

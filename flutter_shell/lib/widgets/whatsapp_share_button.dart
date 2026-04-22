@@ -11,10 +11,15 @@ class WhatsappShareButton extends StatelessWidget {
 
   Future<void> _share() async {
     await HapticService.light();
-    final msg = AppConfig.whatsappShareMessage;
-    final url = RemoteConfigService.appUrl;
-    final encoded = Uri.encodeComponent('$msg $url');
-    final uri = Uri.parse('https://wa.me/?text=$encoded');
+    // Prefer admin-configured message + number; fall back to compile-time defaults
+    final remoteMsg = RemoteConfigService.whatsappMessage;
+    final msg       = remoteMsg.isNotEmpty ? remoteMsg : AppConfig.whatsappShareMessage;
+    final url       = RemoteConfigService.appUrl;
+    final number    = RemoteConfigService.whatsappNumber ?? '';
+    final encoded   = Uri.encodeComponent('$msg $url');
+    final uri = Uri.parse(number.isNotEmpty
+        ? 'https://wa.me/$number?text=$encoded'
+        : 'https://wa.me/?text=$encoded');
     try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (e) {

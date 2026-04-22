@@ -70,7 +70,20 @@ export async function GET(
       screenshot_block:    app.screenshot_block,
       root_block:          app.root_block,
       session_persistence: app.session_persistence,
-      network_detection:   app.network_detection
+      network_detection:   app.network_detection,
+      pinch_to_zoom:       app.pinch_to_zoom ?? true,
+      pull_to_refresh:     app.pull_to_refresh ?? true
+    },
+    whatsapp: {
+      number:  app.whatsapp_number ?? null,
+      message: app.whatsapp_message ?? 'Check out this app'
+    },
+    admob: {
+      position: (app.admob_position ?? 'none') as 'none' | 'top' | 'bottom'
+    },
+    cache: {
+      soft_clear_at: app.cache_soft_clear_at ?? null,
+      hard_clear_at: app.cache_hard_clear_at ?? null
     },
     force_update: {
       min_version_code: app.force_update_version,
