@@ -32,7 +32,6 @@ import '../services/clipboard_service.dart';
 import '../services/custom_tabs_service.dart';
 import '../services/device_info_service.dart';
 import '../services/download_service.dart';
-import '../services/file_picker_service.dart';
 import '../services/haptic_service.dart';
 import '../services/location_service.dart';
 import '../services/notification_service.dart';

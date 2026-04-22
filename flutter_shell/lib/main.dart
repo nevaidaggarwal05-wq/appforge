@@ -143,7 +143,7 @@ class _AppTemplateAppState extends State<AppTemplateApp> with WidgetsBindingObse
   Future<void> _initAppLinks() async {
     try {
       // Cold-start: the URL the app was opened with.
-      final initial = await _appLinks.getInitialAppLink();
+      final initial = await _appLinks.getInitialLink();
       if (initial != null) _forwardLink(initial);
       // Warm links while running.
       _linkSub = _appLinks.uriLinkStream.listen(_forwardLink, onError: (e) {

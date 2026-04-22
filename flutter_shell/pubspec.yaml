@@ -50,7 +50,7 @@ dependencies:
   mobile_scanner:         ^5.2.3
   geolocator:             ^13.0.2
   app_links:              ^6.3.2
-  intl:                   ^0.19.0
+  intl:                   ^0.20.2
 
   # Ads (off by default, gated by remote flag)
   google_mobile_ads:      ^5.1.0
