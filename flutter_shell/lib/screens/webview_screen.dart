@@ -117,39 +117,29 @@ class _WebViewScreenState extends State<WebViewScreen> {
   /// (their logic: "this is a WebView, it can't resolve intent://").
   /// Ours CAN — see `_handleAndroidIntent` — so we strip the marker.
   ///
-  /// Belt-and-suspenders: if the platform UA is empty, still contains a
-  /// `wv` token after stripping, or doesn't look like Chrome, synthesize
-  /// a Chrome UA from device info. That way UPI detection can never
-  /// regress back to "hidden" because of a platform quirk.
+  /// Always synthesize a clean Chrome UA. We do NOT trust the platform
+  /// default — Android WebView includes both `; wv` AND `Version/4.0`
+  /// tokens, either of which Razorpay uses to detect a WebView and
+  /// hide UPI options. Sanitizing the platform string is a losing
+  /// game; a fresh Chrome-shaped UA is bulletproof.
   Future<void> _prepareUserAgent() async {
-    String ua = '';
+    String androidVersion = '14';
+    String model = 'Android';
     try {
-      ua = await InAppWebViewController.getDefaultUserAgent();
-    } catch (e) {
-      Log.w('[webview] getDefaultUserAgent failed: $e');
-    }
-
-    // Strip webview markers inside the parenthesised segment.
-    ua = ua
-        .replaceAll(RegExp(r';\s*wv\)'), ')')
-        .replaceAll(RegExp(r'\s+wv\)'),  ')')
-        .replaceAll(RegExp(r'\s{2,}'),   ' ')
-        .trim();
-
-    final looksLikeChrome = ua.contains('Chrome/');
-    final stillHasWv      = RegExp(r'\bwv\b').hasMatch(ua);
-
-    if (ua.isEmpty || stillHasWv || !looksLikeChrome) {
-      // Synthesize a standard Android Chrome UA from device info.
-      // Chrome version is pinned to a recent stable; gateways only
-      // care that it IS Chrome, not which exact build.
       final device = await DeviceInfoService.load();
-      final androidVersion = device.osVersion.replaceFirst('Android ', '').trim();
-      final model = device.deviceModel.isNotEmpty ? device.deviceModel : 'Android';
-      ua = 'Mozilla/5.0 (Linux; Android $androidVersion; $model) '
-           'AppleWebKit/537.36 (KHTML, like Gecko) '
-           'Chrome/120.0.6099.210 Mobile Safari/537.36';
+      androidVersion = device.osVersion.replaceFirst('Android ', '').trim();
+      if (androidVersion.isEmpty) androidVersion = '14';
+      if (device.deviceModel.isNotEmpty) model = device.deviceModel;
+    } catch (e) {
+      Log.w('[webview] DeviceInfo.load failed, using fallback UA: $e');
     }
+
+    // Chrome for Android UA shape. No `wv`, no `Build/…`, no `Version/4.0`.
+    // Version pinned to a recent stable — gateways only care that this
+    // IS Chrome, not the exact build number.
+    String ua = 'Mozilla/5.0 (Linux; Android $androidVersion; $model) '
+                'AppleWebKit/537.36 (KHTML, like Gecko) '
+                'Chrome/124.0.6367.179 Mobile Safari/537.36';
 
     final suffix = RemoteConfigService.userAgentSuffix ?? '';
     if (suffix.isNotEmpty) ua = '$ua $suffix';
@@ -731,14 +721,32 @@ class _WebViewScreenState extends State<WebViewScreen> {
                 onReceivedHttpError: (_, __, err) =>
                     Log.w('[webview] http ${err.statusCode}: ${err.reasonPhrase}'),
 
-                // target=_blank — open the link in the same WebView instead
-                // of creating a new window (otherwise it silently dies).
+                // Handle target=_blank / window.open. Razorpay uses this
+                // for (a) UPI intent: URIs and (b) bank netbanking POSTs.
+                // If we naively `loadUrl(URLRequest(url:))` we lose the
+                // request method + headers + body, so POST-based bank
+                // redirects fail silently. Forward the full request for
+                // http(s), and hand off to the external launcher for
+                // every non-web scheme so UPI/intent/upi/tel/mailto all
+                // work the same as they do from a regular link tap.
                 onCreateWindow: (controller, createWindowAction) async {
-                  final target = createWindowAction.request.url;
-                  if (target != null) {
-                    await controller.loadUrl(urlRequest: URLRequest(url: target));
+                  final req    = createWindowAction.request;
+                  final uri    = req.url;
+                  final scheme = uri?.scheme ?? '';
+                  if (uri == null) return false;
+
+                  if (scheme == 'http' || scheme == 'https' || scheme == 'about') {
+                    // Load in the existing WebView, preserving method + body.
+                    await controller.loadUrl(urlRequest: req);
+                    return false;
                   }
-                  return true;
+                  if (scheme == 'intent') {
+                    await _handleAndroidIntent(uri.toString());
+                    return false;
+                  }
+                  // upi / tel / mailto / sms / market / whatsapp / etc.
+                  await _launchExternal(uri.toString());
+                  return false;
                 },
 
                 // Runtime WebView permission requests (mic, camera, geo).
