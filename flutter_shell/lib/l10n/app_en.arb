@@ -1,0 +1,30 @@
+{
+  "@@locale": "en",
+
+  "appName": "App",
+  "splashTagline": "Loading...",
+
+  "updateTitle": "Update required",
+  "updateMessage": "A new version is available. Please update to continue.",
+  "updateButton": "Update now",
+
+  "softUpdateMessage": "A new version is available",
+  "softUpdateButton": "Update",
+  "softUpdateLater": "Later",
+
+  "offlineTitle": "You're offline",
+  "offlineMessage": "Check your connection and try again.",
+  "offlineRetry": "Retry",
+
+  "rootedTitle": "Device not supported",
+  "rootedMessage": "This app can't run on rooted or jailbroken devices.",
+
+  "timeoutTitle": "This is taking longer than usual",
+  "timeoutMessage": "Check your connection and try again.",
+  "timeoutRetry": "Retry",
+
+  "rateTitle": "Enjoying the app?",
+  "rateBody": "Would you mind taking a moment to rate us?",
+  "rateYes": "Rate us",
+  "rateNo": "No thanks"
+}

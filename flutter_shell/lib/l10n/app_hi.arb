@@ -1,0 +1,30 @@
+{
+  "@@locale": "hi",
+
+  "appName": "ऐप",
+  "splashTagline": "लोड हो रहा है...",
+
+  "updateTitle": "अपडेट आवश्यक है",
+  "updateMessage": "एक नया संस्करण उपलब्ध है। जारी रखने के लिए कृपया अपडेट करें।",
+  "updateButton": "अभी अपडेट करें",
+
+  "softUpdateMessage": "नया संस्करण उपलब्ध है",
+  "softUpdateButton": "अपडेट",
+  "softUpdateLater": "बाद में",
+
+  "offlineTitle": "आप ऑफ़लाइन हैं",
+  "offlineMessage": "कृपया अपना कनेक्शन जांचें और पुनः प्रयास करें।",
+  "offlineRetry": "पुनः प्रयास करें",
+
+  "rootedTitle": "डिवाइस समर्थित नहीं है",
+  "rootedMessage": "यह ऐप रूटेड या जेलब्रोकन डिवाइस पर नहीं चल सकता।",
+
+  "timeoutTitle": "इसमें सामान्य से अधिक समय लग रहा है",
+  "timeoutMessage": "कृपया अपना कनेक्शन जांचें और पुनः प्रयास करें।",
+  "timeoutRetry": "पुनः प्रयास करें",
+
+  "rateTitle": "ऐप पसंद आ रहा है?",
+  "rateBody": "क्या आप हमें रेट करने के लिए एक पल निकालेंगे?",
+  "rateYes": "रेट करें",
+  "rateNo": "नहीं धन्यवाद"
+}

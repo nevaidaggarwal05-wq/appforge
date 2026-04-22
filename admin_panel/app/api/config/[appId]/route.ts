@@ -85,6 +85,31 @@ export async function GET(
       soft_clear_at: app.cache_soft_clear_at ?? null,
       hard_clear_at: app.cache_hard_clear_at ?? null
     },
+    webview: {
+      user_agent_suffix:    app.user_agent_suffix ?? null,
+      edge_to_edge:         app.edge_to_edge ?? true,
+      status_bar_style:     (app.status_bar_style ?? 'auto') as 'auto'|'light'|'dark',
+      long_press_disabled:  app.long_press_disabled ?? true,
+      page_load_timeout_ms: app.page_load_timeout_ms ?? 20000,
+      extra_allowed_hosts:  (app.extra_allowed_hosts ?? []) as string[],
+      theme_color_source:   (app.theme_color_source ?? 'admin') as 'admin'|'meta'|'system'
+    },
+    permissions: {
+      geolocation: app.geolocation_enabled ?? false,
+      scanner:     app.scanner_enabled ?? false,
+      file_upload: app.file_upload_enabled ?? true,
+      downloads:   app.downloads_enabled ?? true
+    },
+    upload: {
+      max_image_kb:  app.upload_max_image_kb ?? 1024,
+      image_quality: app.upload_image_quality ?? 80
+    },
+    oauth: {
+      custom_scheme: app.oauth_custom_scheme ?? null,
+      hosts:         (app.oauth_hosts ?? ['accounts.google.com','appleid.apple.com','login.microsoftonline.com']) as string[]
+    },
+    notif:  { badge_enabled: app.notif_badge_enabled ?? true },
+    locale: { default: (app.default_locale ?? 'en') as 'en'|'hi' },
     force_update: {
       min_version_code: app.force_update_version,
       message:          app.force_update_message ?? '',

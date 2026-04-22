@@ -159,6 +159,119 @@ export default function ConfigForm({ app }: { app: App }) {
         </Card>
       )}
 
+      {/* ── Permissions ─────────────────────────────── */}
+      <Card title="Permissions" description="Hardware + browser-API access. Users still see the OS prompt the first time.">
+        <Field label="Geolocation" inline hint="Allow the web page to request device location (uses navigator.geolocation)">
+          <Switch checked={f.geolocation_enabled ?? false} onChange={v => set('geolocation_enabled', v)} />
+        </Field>
+        <Field label="QR / barcode scanner" inline hint="Enables flutter.scanQR() JS bridge for in-app camera scanning">
+          <Switch checked={f.scanner_enabled ?? false} onChange={v => set('scanner_enabled', v)} />
+        </Field>
+        <Field label="File uploads" inline hint="Allow <input type=file> to open the native picker (gallery / camera / files)">
+          <Switch checked={f.file_upload_enabled ?? true} onChange={v => set('file_upload_enabled', v)} />
+        </Field>
+        <Field label="Downloads" inline hint="Intercept download links and save to device via native download manager">
+          <Switch checked={f.downloads_enabled ?? true} onChange={v => set('downloads_enabled', v)} />
+        </Field>
+      </Card>
+
+      {/* ── Upload tuning (conditional) ─────────────── */}
+      {(f.file_upload_enabled ?? true) && (
+        <Card title="Upload tuning" description="Auto-compress images chosen via <input type=file> before uploading.">
+          <Field label={`Max image size: ${f.upload_max_image_kb ?? 1024} KB`} hint="Images larger than this get compressed.">
+            <input type="range" min={100} max={10240} step={100}
+              value={f.upload_max_image_kb ?? 1024}
+              onChange={e => set('upload_max_image_kb', Number(e.target.value))}
+              className="w-full" />
+          </Field>
+          <Field label={`JPEG quality: ${f.upload_image_quality ?? 80}%`} hint="Lower = smaller files, faster upload, more artifacts.">
+            <input type="range" min={30} max={100} step={5}
+              value={f.upload_image_quality ?? 80}
+              onChange={e => set('upload_image_quality', Number(e.target.value))}
+              className="w-full" />
+          </Field>
+        </Card>
+      )}
+
+      {/* ── Advanced WebView ────────────────────────── */}
+      <Card title="Advanced WebView" description="Low-level WebView tuning. Defaults are fine for most apps.">
+        <Field label="User-Agent suffix" hint="Appended to the default UA so your backend can detect the shell. Example: MaximoneyApp/1.2.0">
+          <input value={f.user_agent_suffix || ''} onChange={e => set('user_agent_suffix', e.target.value)}
+            className="input font-mono text-sm" placeholder="MaximoneyApp/1.2.0" />
+        </Field>
+        <Field label="Edge-to-edge display" inline hint="Content draws under the status/navigation bars (Android 15 default)">
+          <Switch checked={f.edge_to_edge ?? true} onChange={v => set('edge_to_edge', v)} />
+        </Field>
+        <Field label="Status bar style" hint="Controls icon colour in the status bar">
+          <select value={f.status_bar_style ?? 'auto'}
+            onChange={e => set('status_bar_style', e.target.value as 'auto' | 'light' | 'dark')}
+            className="input">
+            <option value="auto">Auto (follow theme)</option>
+            <option value="light">Light icons (dark bg)</option>
+            <option value="dark">Dark icons (light bg)</option>
+          </select>
+        </Field>
+        <Field label="Theme color source" hint="Where the status bar + splash get their colour from">
+          <select value={f.theme_color_source ?? 'admin'}
+            onChange={e => set('theme_color_source', e.target.value as 'admin' | 'meta' | 'system')}
+            className="input">
+            <option value="admin">Admin panel (theme_primary)</option>
+            <option value="meta">Web page &lt;meta name=theme-color&gt;</option>
+            <option value="system">System accent colour</option>
+          </select>
+        </Field>
+        <Field label="Disable long-press context menu" inline hint="Blocks text selection + link preview popups — feels more app-like">
+          <Switch checked={f.long_press_disabled ?? true} onChange={v => set('long_press_disabled', v)} />
+        </Field>
+        <Field label={`Page load timeout: ${((f.page_load_timeout_ms ?? 20000) / 1000).toFixed(0)}s`} hint="Show the retry screen if the page hasn't loaded by then">
+          <input type="range" min={5000} max={120000} step={1000}
+            value={f.page_load_timeout_ms ?? 20000}
+            onChange={e => set('page_load_timeout_ms', Number(e.target.value))}
+            className="w-full" />
+        </Field>
+        <Field label="Extra allowed hosts" hint="Comma-separated. Hosts the WebView can navigate to beyond the main app_url domain.">
+          <input
+            value={(f.extra_allowed_hosts ?? []).join(', ')}
+            onChange={e => set('extra_allowed_hosts', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+            className="input font-mono text-sm"
+            placeholder="payments.example.com, cdn.example.com" />
+        </Field>
+      </Card>
+
+      {/* ── OAuth / external login ─────────────────── */}
+      <Card title="OAuth & external login" description="Some providers (Google, Apple, Microsoft) refuse to log in inside a WebView. These hosts open in a Chrome Custom Tab and return via deep link.">
+        <Field label="Custom URL scheme" hint="Your app's deep-link scheme without ://. Example: 'maximoney' → maximoney://callback">
+          <input value={f.oauth_custom_scheme || ''} onChange={e => set('oauth_custom_scheme', e.target.value)}
+            className="input font-mono text-sm" placeholder="maximoney" />
+        </Field>
+        <Field label="Hosts to open in Custom Tab" hint="Comma-separated. Any navigation matching these hosts opens externally.">
+          <input
+            value={(f.oauth_hosts ?? []).join(', ')}
+            onChange={e => set('oauth_hosts', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+            className="input font-mono text-sm"
+            placeholder="accounts.google.com, appleid.apple.com, login.microsoftonline.com" />
+        </Field>
+      </Card>
+
+      {/* ── Notifications ───────────────────────────── */}
+      <Card title="Notifications" description="Push notification behaviour on the device.">
+        <Field label="App icon badge" inline hint="Show unread count on the launcher icon (Android 8+, iOS)">
+          <Switch checked={f.notif_badge_enabled ?? true} onChange={v => set('notif_badge_enabled', v)} />
+        </Field>
+      </Card>
+
+      {/* ── Locale ──────────────────────────────────── */}
+      <Card title="Locale" description="Language for native app screens (splash, update prompt, offline screen). Web content is unaffected.">
+        <Field label="Default language">
+          <select value={f.default_locale ?? 'en'}
+            onChange={e => set('default_locale', e.target.value as 'en' | 'hi')}
+            className="input">
+            <option value="en">English</option>
+            <option value="hi">हिन्दी (Hindi)</option>
+          </select>
+        </Field>
+      </Card>
+
       {/* ── Force update ────────────────────────────── */}
       <Card title="Force update" description="Blocks users below this version code. Set 0 to disable.">
         <Field label="Minimum versionCode" hint="Users with lower versionCode see the Update Required screen">

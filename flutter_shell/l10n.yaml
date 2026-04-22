@@ -1,0 +1,7 @@
+# gen-l10n config. Runs via `flutter gen-l10n` (or automatically as part of
+# flutter pub get when `generate: true` is set in pubspec.yaml).
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart
+output-dir: lib/l10n
+synthetic-package: false

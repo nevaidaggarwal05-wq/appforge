@@ -75,6 +75,25 @@ export interface App {
   cache_soft_clear_at: string | null;
   cache_hard_clear_at: string | null;
 
+  // migration 003 — WebView shell v2
+  geolocation_enabled: boolean;
+  scanner_enabled: boolean;
+  file_upload_enabled: boolean;
+  downloads_enabled: boolean;
+  user_agent_suffix: string | null;
+  status_bar_style: 'auto' | 'light' | 'dark';
+  edge_to_edge: boolean;
+  long_press_disabled: boolean;
+  extra_allowed_hosts: string[];
+  page_load_timeout_ms: number;
+  upload_max_image_kb: number;
+  upload_image_quality: number;
+  default_locale: 'en' | 'hi';
+  theme_color_source: 'admin' | 'meta' | 'system';
+  oauth_custom_scheme: string | null;
+  oauth_hosts: string[];
+  notif_badge_enabled: boolean;
+
   // escape hatch
   custom_config: Record<string, unknown>;
 
@@ -141,6 +160,25 @@ export interface RemoteConfigResponse {
   whatsapp: { number: string | null; message: string };
   admob: { position: 'none' | 'top' | 'bottom' };
   cache: { soft_clear_at: string | null; hard_clear_at: string | null };
+  webview: {
+    user_agent_suffix: string | null;
+    edge_to_edge: boolean;
+    status_bar_style: 'auto' | 'light' | 'dark';
+    long_press_disabled: boolean;
+    page_load_timeout_ms: number;
+    extra_allowed_hosts: string[];
+    theme_color_source: 'admin' | 'meta' | 'system';
+  };
+  permissions: {
+    geolocation: boolean;
+    scanner: boolean;
+    file_upload: boolean;
+    downloads: boolean;
+  };
+  upload: { max_image_kb: number; image_quality: number };
+  oauth: { custom_scheme: string | null; hosts: string[] };
+  notif: { badge_enabled: boolean };
+  locale: { default: 'en' | 'hi' };
   force_update: { min_version_code: number; message: string; changelog: string };
   soft_update:  { min_version_code: number; message: string; changelog: string };
   custom: Record<string, unknown>;

@@ -36,10 +36,13 @@ class NotificationService {
     _initialized = true;
 
     try {
-      // Local notifications (foreground display + tap handling)
+      // Local notifications (foreground display + tap handling).
+      // Icon: dedicated white-silhouette @drawable/ic_notification so the
+      // system tray doesn't show a white square on API 21+ (launcher icons
+      // get their colour stripped).
       await _local.initialize(
         const InitializationSettings(
-          android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+          android: AndroidInitializationSettings('ic_notification'),
           iOS: DarwinInitializationSettings(
             requestAlertPermission: true,
             requestBadgePermission: true,
@@ -120,32 +123,76 @@ class NotificationService {
   }
 
   static Future<void> _showLocalNotification(RemoteMessage m) async {
+    // Silent data-only pushes (type=silent) — do NOT pop a notification.
+    // Used to trigger cache refresh or logout remotely.
+    final type = (m.data['type'] as String?) ?? 'visible';
+    if (type == 'silent') return;
+
     final n = m.notification;
-    if (n == null) return;
-    final channelId = (m.data['category'] as String?) ?? AppConfig.notifChannelTransactional;
-    final payload = m.data['url'] as String?;
+    if (n == null) {
+      // Data-only visible push — title/body may be in data map
+      final title = m.data['title'] as String? ?? '';
+      final body  = m.data['body']  as String? ?? '';
+      if (title.isEmpty && body.isEmpty) return;
+      await _present(m.messageId.hashCode, title, body, m.data);
+      return;
+    }
+    await _present(m.messageId.hashCode, n.title ?? '', n.body ?? '', m.data);
+  }
+
+  static Future<void> _present(int id, String title, String body, Map<String, dynamic> data) async {
+    final channelId = (data['category'] as String?) ?? AppConfig.notifChannelTransactional;
+    final payload = data['url'] as String?;
+    final imageUrl = data['image_url'] as String?;
 
     await _local.show(
-      m.messageId.hashCode,
-      n.title ?? '',
-      n.body ?? '',
+      id,
+      title,
+      body,
       NotificationDetails(
         android: AndroidNotificationDetails(
           channelId,
           channelId[0].toUpperCase() + channelId.substring(1),
           importance: Importance.high,
           priority: Priority.high,
+          icon: 'ic_notification',
+          styleInformation: imageUrl != null && imageUrl.isNotEmpty
+              ? const BigTextStyleInformation('')
+              : null,
         ),
-        iOS: const DarwinNotificationDetails(presentAlert: true, presentBadge: true, presentSound: true),
+        iOS: const DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
       ),
       payload: payload,
     );
   }
 
   static void _processDeepLink(RemoteMessage m) {
-    final url = m.data['url'] as String?;
+    // Supported routing keys (in priority order):
+    //   url         — absolute or relative URL to load in WebView
+    //   route       — named route (mapped by the web app)
+    //   deep_link   — alias for url
+    final url = (m.data['url'] as String?)
+        ?? (m.data['deep_link'] as String?)
+        ?? (m.data['route'] as String?);
     if (url != null && url.isNotEmpty) {
       deepLinkUrl.value = url;
+    }
+  }
+
+  /// Unsubscribe everything — used by logout flow so the device stops
+  /// receiving per-user topics.
+  static Future<void> unsubscribeAll() async {
+    for (final t in [
+      AppConfig.notifChannelTransactional,
+      AppConfig.notifChannelAlerts,
+      AppConfig.notifChannelPromotional,
+      'all_apps',
+    ]) {
+      try { await _messaging.unsubscribeFromTopic(t); } catch (_) {}
     }
   }
 }

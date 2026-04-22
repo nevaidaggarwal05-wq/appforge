@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:in_app_update/in_app_update.dart';
 
 import '../services/analytics_service.dart';
 import '../services/device_info_service.dart';
@@ -61,7 +62,7 @@ class _BootstrapScreenState extends State<BootstrapScreen> {
       }
     }
 
-    // Force update?
+    // Force update (hard block — shown before anything else).
     final minCode = RemoteConfigService.forceUpdateVersion;
     if (minCode > 0 && device.buildNumber < minCode) {
       _go(const ForceUpdateScreen());
@@ -74,11 +75,36 @@ class _BootstrapScreenState extends State<BootstrapScreen> {
       return;
     }
 
+    // Play Store in-app update — non-blocking check. If an immediate update
+    // is available we still let the user through (only soft_update / force_update
+    // gates are blocking); this just triggers the native "UPDATE AVAILABLE" UI.
+    _checkInAppUpdate();
+
     // Fire a session_start event (non-blocking)
     AnalyticsService.log('session_start', {'session_count': sessions});
 
     Log.i('[bootstrap] ready — opening webview');
     _go(const WebViewScreen());
+  }
+
+  Future<void> _checkInAppUpdate() async {
+    try {
+      final info = await InAppUpdate.checkForUpdate();
+      if (info.updateAvailability == UpdateAvailability.updateAvailable) {
+        // Prefer flexible — user keeps using the app while download happens
+        // in the background, then we prompt to install on next tap.
+        if (info.flexibleUpdateAllowed) {
+          await InAppUpdate.startFlexibleUpdate();
+          await InAppUpdate.completeFlexibleUpdate();
+        } else if (info.immediateUpdateAllowed) {
+          // Only for critical releases flagged by the Play Console
+          await InAppUpdate.performImmediateUpdate();
+        }
+      }
+    } catch (e) {
+      // Non-Android platforms throw — fine, log + move on.
+      Log.i('[in_app_update] skipped: $e');
+    }
   }
 
   void _go(Widget screen) {

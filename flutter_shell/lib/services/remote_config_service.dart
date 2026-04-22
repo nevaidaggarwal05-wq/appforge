@@ -94,4 +94,27 @@ class RemoteConfigService {
   static String    get admobPosition       => _current.admob.position; // 'none'|'top'|'bottom'
   static DateTime? get cacheSoftClearAt    => _current.cache.softClearAt;
   static DateTime? get cacheHardClearAt    => _current.cache.hardClearAt;
+
+  // Migration 003 additions
+  static String?      get userAgentSuffix    => _current.webview.userAgentSuffix;
+  static bool         get edgeToEdge         => _current.webview.edgeToEdge;
+  static String       get statusBarStyle     => _current.webview.statusBarStyle;
+  static bool         get longPressDisabled  => _current.webview.longPressDisabled;
+  static int          get pageLoadTimeoutMs  => _current.webview.pageLoadTimeoutMs;
+  static List<String> get extraAllowedHosts  => _current.webview.extraAllowedHosts;
+  static String       get themeColorSource   => _current.webview.themeColorSource;
+
+  static bool   get geolocationEnabled => _current.permissions.geolocation;
+  static bool   get scannerEnabled     => _current.permissions.scanner;
+  static bool   get fileUploadEnabled  => _current.permissions.fileUpload;
+  static bool   get downloadsEnabled   => _current.permissions.downloads;
+
+  static int    get uploadMaxImageKb   => _current.upload.maxImageKb;
+  static int    get uploadImageQuality => _current.upload.imageQuality;
+
+  static String?       get oauthCustomScheme => _current.oauth.customScheme;
+  static List<String>  get oauthHosts        => _current.oauth.hosts;
+
+  static bool   get notifBadgeEnabled  => _current.notif.badgeEnabled;
+  static String get defaultLocale      => _current.locale.defaultLocale;
 }

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Colour applied as the notification icon tint when the push has no
+         explicit colour. Overridden per app during the build sync step. -->
+    <color name="notification_color">#2563EB</color>
+</resources>
