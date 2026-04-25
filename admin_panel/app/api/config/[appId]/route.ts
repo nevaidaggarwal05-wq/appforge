@@ -125,8 +125,17 @@ export async function GET(
 
   return NextResponse.json(response, {
     headers: {
-      // Cache 60s at edge, serve stale up to 5 minutes while revalidating
-      'Cache-Control': 'public, max-age=60, s-maxage=60, stale-while-revalidate=300'
+      // No caching. Every shell open should see the latest admin-panel
+      // state. Previous `public, max-age=60, s-maxage=60,
+      // stale-while-revalidate=300` meant an admin-panel URL change
+      // could take up to 6 minutes to propagate — and in practice,
+      // Next.js's route-level cache + any intermediate proxy held it
+      // far longer. The Flutter shell already does local caching in
+      // SharedPreferences for offline/fast-start, so the server doesn't
+      // need to add another layer.
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'CDN-Cache-Control': 'no-store',
+      'Vercel-CDN-Cache-Control': 'no-store'
     }
   });
 }
