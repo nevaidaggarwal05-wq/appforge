@@ -72,44 +72,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
   // the detection is a false positive for us.
   String? _userAgent;
 
-  // ── Diagnostic overlay ────────────────────────────────────────────
-  // Shipped in v1.2.5+12 to capture what Razorpay actually emits when
-  // a UPI icon is tapped. Toggled by 5 rapid taps in the top-left
-  // corner of the screen (24×24 hit area above the WebView). Holds a
-  // rolling buffer of recent navigation / window.open / console events
-  // so the user can screenshot + share the log back without a PC.
-  final List<String> _debugEvents = <String>[];
-  bool _debugVisible = false;
-  int _topLeftTapCount = 0;
-  DateTime _firstTopLeftTapAt = DateTime.fromMillisecondsSinceEpoch(0);
-
-  void _logDebug(String line) {
-    final ts = DateTime.now().toIso8601String().substring(11, 19);
-    final entry = '$ts  $line';
-    Log.i('[dbg] $line');
-    if (!mounted) return;
-    setState(() {
-      _debugEvents.add(entry);
-      if (_debugEvents.length > 60) {
-        _debugEvents.removeRange(0, _debugEvents.length - 60);
-      }
-    });
-  }
-
-  void _onTopLeftTap() {
-    final now = DateTime.now();
-    if (now.difference(_firstTopLeftTapAt).inSeconds > 3) {
-      _topLeftTapCount = 1;
-      _firstTopLeftTapAt = now;
-      return;
-    }
-    _topLeftTapCount++;
-    if (_topLeftTapCount >= 5) {
-      _topLeftTapCount = 0;
-      setState(() => _debugVisible = !_debugVisible);
-    }
-  }
-
   @override
   void initState() {
     super.initState();
@@ -271,19 +233,12 @@ class _WebViewScreenState extends State<WebViewScreen> {
     final uri = action.request.url;
     if (uri == null) return NavigationActionPolicy.ALLOW;
 
-    final scheme     = uri.scheme;
-    final urlStr     = uri.toString();
-    final isMain     = action.isForMainFrame == true;
-    final method     = action.request.method;
-    final urlPreview = urlStr.length > 140 ? '${urlStr.substring(0, 140)}…' : urlStr;
-    _logDebug('nav $method ${isMain ? "main" : "sub"} $scheme :: $urlPreview');
-
-    if (scheme == 'http' || scheme == 'https') {
+    if (uri.scheme == 'http' || uri.scheme == 'https') {
       return NavigationActionPolicy.ALLOW;
     }
 
-    if (scheme == 'intent') {
-      await _handleAndroidIntent(urlStr);
+    if (uri.scheme == 'intent') {
+      await _handleAndroidIntent(uri.toString());
       return NavigationActionPolicy.CANCEL;
     }
 
@@ -304,13 +259,9 @@ class _WebViewScreenState extends State<WebViewScreen> {
     // browser_fallback_url or Play Store fallback — so we only fall
     // through to the legacy synth-upi path if the native bridge is
     // genuinely unreachable (iOS, or the channel wasn't registered).
-    _logDebug('intent→bridge ${url.length > 200 ? "${url.substring(0, 200)}…" : url}');
     try {
-      final ok = await IntentBridgeService.launchIntent(url);
-      _logDebug('intent bridge → $ok');
-      if (ok) return;
+      if (await IntentBridgeService.launchIntent(url)) return;
     } catch (e) {
-      _logDebug('intent bridge threw: $e');
       Log.w('[intent] native bridge threw: $e');
     }
 
@@ -692,8 +643,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
         final rawUrl = payload['url'] as String? ?? '';
         if (rawUrl.isEmpty) break;
         final dScheme = Uri.tryParse(rawUrl)?.scheme.toLowerCase() ?? '';
-        _logDebug('dispatchUrl $dScheme :: '
-            '${rawUrl.length > 140 ? "${rawUrl.substring(0, 140)}…" : rawUrl}');
         if (dScheme == 'intent') {
           await _handleAndroidIntent(rawUrl);
         } else if (dScheme == 'http' || dScheme == 'https') {
@@ -721,14 +670,13 @@ class _WebViewScreenState extends State<WebViewScreen> {
             final qIdx = rawUrl.indexOf('?');
             if (qIdx > 0) {
               final upiUrl = 'upi://pay${rawUrl.substring(qIdx)}';
-              _logDebug('dispatchUrl gpay→upi fallback :: $upiUrl');
               try {
                 await launchUrl(
                   Uri.parse(upiUrl),
                   mode: LaunchMode.externalApplication,
                 );
               } catch (e) {
-                _logDebug('upi fallback failed: $e');
+                Log.w('[bridge] upi fallback failed: $e');
               }
             }
           }
@@ -1017,34 +965,13 @@ class _WebViewScreenState extends State<WebViewScreen> {
                     handlerName: 'FlutterBridge',
                     callback: _onJsBridge,
                   );
-                  // Enable Chrome DevTools inspection (chrome://inspect
-                  // on a host connected via ADB). No-op on iOS. Has a
-                  // tiny RAM cost and leaks no user data by itself; the
-                  // device still has to be USB-tethered and unlocked
-                  // for a remote chrome to attach.
-                  InAppWebViewController.setWebContentsDebuggingEnabled(true)
-                      .catchError((_) {});
                 },
                 shouldOverrideUrlLoading: _onNavRequest,
-                // JS console → logcat + on-screen overlay. Razorpay
-                // logs the UPI-icon click handler's decisions here, so
-                // this is the single most useful hook for diagnosing
-                // "tapped GPay, nothing happened".
-                onConsoleMessage: (controller, msg) {
-                  final lvl = msg.messageLevel.toString().split('.').last;
-                  final m   = msg.message;
-                  final trimmed = m.length > 160 ? '${m.substring(0, 160)}…' : m;
-                  _logDebug('console[$lvl] $trimmed');
-                },
-                onLoadStart: (_, url) {
-                  final u = url?.toString() ?? '';
-                  _logDebug('load start :: ${u.length > 120 ? "${u.substring(0, 120)}…" : u}');
+                onLoadStart: (_, __) {
                   if (mounted) setState(() { _loading = true; _progress = 0; });
                   _armLoadTimeout();
                 },
                 onLoadStop: (c, url) async {
-                  final u = url?.toString() ?? '';
-                  _logDebug('load stop  :: ${u.length > 120 ? "${u.substring(0, 120)}…" : u}');
                   _cancelLoadTimeout();
                   if (mounted) setState(() { _loading = false; _progress = 1; });
                   _pullToRefreshController?.endRefreshing();
@@ -1074,11 +1001,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
                   final req    = createWindowAction.request;
                   final uri    = req.url;
                   final scheme = uri?.scheme ?? '';
-                  final method = req.method ?? 'GET';
-                  final bodyLen = req.body?.length ?? 0;
-                  final urlStr = uri?.toString() ?? '';
-                  final urlPreview = urlStr.length > 140 ? '${urlStr.substring(0, 140)}…' : urlStr;
-                  _logDebug('win.open $method $scheme (body=$bodyLen) :: $urlPreview');
                   if (uri == null) return false;
 
                   if (scheme == 'http' || scheme == 'https' || scheme == 'about') {
@@ -1190,123 +1112,8 @@ class _WebViewScreenState extends State<WebViewScreen> {
                   right: 16, bottom: 24,
                   child: WhatsappShareButton(),
                 ),
-
-              // Invisible 5-tap target (top-left corner) to toggle the
-              // diagnostic overlay. Must sit ABOVE the WebView in the
-              // Stack so taps there don't fall through to the page.
-              Positioned(
-                top: 0, left: 0,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: _onTopLeftTap,
-                  child: const SizedBox(width: 48, height: 48),
-                ),
-              ),
-
-              if (_debugVisible)
-                Positioned(
-                  left: 8, right: 8, bottom: 8,
-                  child: _DebugOverlay(
-                    lines: _debugEvents,
-                    onClear: () => setState(_debugEvents.clear),
-                    onClose: () => setState(() => _debugVisible = false),
-                    onCopy: () async {
-                      await Clipboard.setData(
-                        ClipboardData(text: _debugEvents.join('\n')),
-                      );
-                    },
-                  ),
-                ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Floating diagnostic overlay — rolling log of navigation, window.open
-/// and JS console events. Toggled by 5 rapid taps in the top-left
-/// corner of the WebView. Designed so the user can screenshot it + share
-/// it back without needing a PC (FLAG_SECURE is off by default on
-/// Maximoney, and toggleable via remote config regardless).
-class _DebugOverlay extends StatelessWidget {
-  final List<String> lines;
-  final VoidCallback onClear;
-  final VoidCallback onClose;
-  final Future<void> Function() onCopy;
-  const _DebugOverlay({
-    required this.lines,
-    required this.onClear,
-    required this.onClose,
-    required this.onCopy,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.black.withValues(alpha: 0.82),
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        constraints: const BoxConstraints(maxHeight: 280),
-        padding: const EdgeInsets.fromLTRB(10, 6, 6, 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                const Text(
-                  'debug',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const Spacer(),
-                _pill('copy', () { onCopy(); }),
-                const SizedBox(width: 6),
-                _pill('clear', onClear),
-                const SizedBox(width: 6),
-                _pill('×', onClose),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Flexible(
-              child: SingleChildScrollView(
-                reverse: true,
-                child: Text(
-                  lines.isEmpty ? '(no events yet)' : lines.join('\n'),
-                  style: const TextStyle(
-                    color: Colors.greenAccent,
-                    fontFamily: 'monospace',
-                    fontSize: 10.5,
-                    height: 1.25,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _pill(String label, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.white12,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(
-          label,
-          style: const TextStyle(color: Colors.white, fontSize: 11),
         ),
       ),
     );
