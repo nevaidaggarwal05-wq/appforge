@@ -1,7 +1,7 @@
 name: app_template
 description: AppForge v5 white-label Flutter shell. Wraps any website in a native app with remote config, push, biometric, and more.
 publish_to: 'none'
-version: 1.2.4+11
+version: 1.2.9+16
 
 environment:
   sdk: '>=3.4.0 <4.0.0'

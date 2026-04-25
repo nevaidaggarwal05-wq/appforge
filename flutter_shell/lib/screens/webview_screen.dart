@@ -17,6 +17,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -70,6 +71,44 @@ class _WebViewScreenState extends State<WebViewScreen> {
   // WebView *can* resolve intent:// via shouldOverrideUrlLoading, so
   // the detection is a false positive for us.
   String? _userAgent;
+
+  // ── Diagnostic overlay ────────────────────────────────────────────
+  // Shipped in v1.2.5+12 to capture what Razorpay actually emits when
+  // a UPI icon is tapped. Toggled by 5 rapid taps in the top-left
+  // corner of the screen (24×24 hit area above the WebView). Holds a
+  // rolling buffer of recent navigation / window.open / console events
+  // so the user can screenshot + share the log back without a PC.
+  final List<String> _debugEvents = <String>[];
+  bool _debugVisible = false;
+  int _topLeftTapCount = 0;
+  DateTime _firstTopLeftTapAt = DateTime.fromMillisecondsSinceEpoch(0);
+
+  void _logDebug(String line) {
+    final ts = DateTime.now().toIso8601String().substring(11, 19);
+    final entry = '$ts  $line';
+    Log.i('[dbg] $line');
+    if (!mounted) return;
+    setState(() {
+      _debugEvents.add(entry);
+      if (_debugEvents.length > 60) {
+        _debugEvents.removeRange(0, _debugEvents.length - 60);
+      }
+    });
+  }
+
+  void _onTopLeftTap() {
+    final now = DateTime.now();
+    if (now.difference(_firstTopLeftTapAt).inSeconds > 3) {
+      _topLeftTapCount = 1;
+      _firstTopLeftTapAt = now;
+      return;
+    }
+    _topLeftTapCount++;
+    if (_topLeftTapCount >= 5) {
+      _topLeftTapCount = 0;
+      setState(() => _debugVisible = !_debugVisible);
+    }
+  }
 
   @override
   void initState() {
@@ -232,12 +271,19 @@ class _WebViewScreenState extends State<WebViewScreen> {
     final uri = action.request.url;
     if (uri == null) return NavigationActionPolicy.ALLOW;
 
-    if (uri.scheme == 'http' || uri.scheme == 'https') {
+    final scheme     = uri.scheme;
+    final urlStr     = uri.toString();
+    final isMain     = action.isForMainFrame == true;
+    final method     = action.request.method;
+    final urlPreview = urlStr.length > 140 ? '${urlStr.substring(0, 140)}…' : urlStr;
+    _logDebug('nav $method ${isMain ? "main" : "sub"} $scheme :: $urlPreview');
+
+    if (scheme == 'http' || scheme == 'https') {
       return NavigationActionPolicy.ALLOW;
     }
 
-    if (uri.scheme == 'intent') {
-      await _handleAndroidIntent(uri.toString());
+    if (scheme == 'intent') {
+      await _handleAndroidIntent(urlStr);
       return NavigationActionPolicy.CANCEL;
     }
 
@@ -258,9 +304,13 @@ class _WebViewScreenState extends State<WebViewScreen> {
     // browser_fallback_url or Play Store fallback — so we only fall
     // through to the legacy synth-upi path if the native bridge is
     // genuinely unreachable (iOS, or the channel wasn't registered).
+    _logDebug('intent→bridge ${url.length > 200 ? "${url.substring(0, 200)}…" : url}');
     try {
-      if (await IntentBridgeService.launchIntent(url)) return;
+      final ok = await IntentBridgeService.launchIntent(url);
+      _logDebug('intent bridge → $ok');
+      if (ok) return;
     } catch (e) {
+      _logDebug('intent bridge threw: $e');
       Log.w('[intent] native bridge threw: $e');
     }
 
@@ -331,6 +381,203 @@ class _WebViewScreenState extends State<WebViewScreen> {
       } catch (_) {}
     }
   }
+
+  // ── window.open shim (document-start) ──────────────────────────
+  //
+  // Razorpay's UPI-icon click handler does roughly:
+  //
+  //     var w = window.open('');              // empty URL
+  //     w.location = 'intent://...#Intent;...';
+  //
+  // In a real browser, window.open('') returns a Window reference;
+  // you can then assign `.location` to fire an intent. Android WebView
+  // returns `null` from the native window.open, so Razorpay's next
+  // line throws "Cannot set property 'location' of null" and the UPI
+  // icon silently does nothing — the exact symptom reported on
+  // v1.2.4+11 (log: `win.open GET (body=0) ::` with empty URL).
+  //
+  // The shim replaces `window.open` so it ALWAYS returns a proxy
+  // object. Assigning `.location = "intent://..."` on that proxy
+  // routes the URL back through our FlutterBridge `dispatchUrl`
+  // action, which calls the native Intent.parseUri bridge. Injected
+  // at DOCUMENT_START so it runs before any Razorpay code.
+  //
+  // For http(s) URLs we still delegate to the native window.open so
+  // `onCreateWindow` fires and the page loads in our WebView.
+  static final _openShim = UserScript(
+    source: r'''
+      (function(){
+        if (window.__flutter_open_shim) return;
+        window.__flutter_open_shim = true;
+        var origOpen = window.open;
+        function dispatch(url){
+          try {
+            if (!url) return;
+            if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+              window.flutter_inappwebview.callHandler('FlutterBridge', {
+                action: 'dispatchUrl', url: String(url)
+              });
+            } else {
+              // Bridge not ready yet — retry after a tick.
+              setTimeout(function(){ dispatch(url); }, 32);
+            }
+          } catch(e){}
+        }
+        function makePopupProxy(initialUrl){
+          var _loc = String(initialUrl || '');
+          var locationObj = {
+            get href(){ return _loc; },
+            set href(v){ _loc = String(v); dispatch(v); },
+            assign:  function(v){ _loc = String(v); dispatch(v); },
+            replace: function(v){ _loc = String(v); dispatch(v); },
+            reload:  function(){},
+            toString: function(){ return _loc; }
+          };
+          var proxy = {
+            closed: false,
+            close: function(){ this.closed = true; },
+            focus: function(){},
+            blur:  function(){},
+            postMessage: function(){},
+            opener: null,
+            document: {
+              write: function(){}, writeln: function(){},
+              open:  function(){}, close:   function(){}
+            }
+          };
+          try {
+            Object.defineProperty(proxy, 'location', {
+              configurable: true,
+              get: function(){ return locationObj; },
+              set: function(v){
+                if (v && typeof v === 'object' && 'href' in v) {
+                  locationObj.href = v.href;
+                } else {
+                  locationObj.href = String(v);
+                }
+              }
+            });
+          } catch(e){
+            proxy.location = locationObj;
+          }
+          return proxy;
+        }
+        window.open = function(url, target, features){
+          var u = url ? String(url) : '';
+          try { console.log('[openShim] open ' + (u.length > 80 ? u.substring(0, 80) + '…' : u)); } catch(e){}
+          // ANY non-empty, non-http(s)/about scheme → dispatch natively.
+          // Covers intent:, upi:, gpay:, tez:, phonepe:, paytmmp:, bhim:,
+          // market:, whatsapp:, tel:, mailto:, sms:, and anything new
+          // Razorpay adds in the future.
+          if (u.length > 0 && !/^https?:/i.test(u) && !/^about:/i.test(u)) {
+            dispatch(u);
+            return makePopupProxy(u);
+          }
+          // http(s): delegate to native so onCreateWindow loads it in
+          // the same WebView.
+          if (u.length > 0) {
+            try {
+              var real = origOpen ? origOpen.apply(window, arguments) : null;
+              if (real) return real;
+            } catch(e){}
+            return makePopupProxy(u);
+          }
+          // Empty URL (Razorpay's popup-ref pattern). Never call native
+          // window.open — it returns null and doesn't help us.
+          return makePopupProxy('');
+        };
+
+        // ── Form-submission normalizer ──────────────────────────────
+        // Two separate Razorpay patterns break in Android WebView:
+        //
+        //   (a) Detached form: they build a <form> but never append it
+        //       to the DOM, then call form.submit(). WebView refuses
+        //       ("Form submission canceled because the form is not
+        //       connected"). Chrome tolerates this. Fix: auto-attach.
+        //
+        //   (b) target="_blank" form: even if the form IS connected,
+        //       target="_blank" tells the browser to open a new tab
+        //       for the POST. Android WebView doesn't do popups, so
+        //       the POST is dropped on the floor. Fix: retarget to
+        //       _self so the submission navigates the main WebView.
+        //       Payment gateways' success/cancel URLs redirect back
+        //       to the checkout origin, so this is safe.
+        //
+        // Both patches are needed because forms can be submitted either
+        // programmatically (form.submit()) OR by user interaction with
+        // a <button type="submit">. The prototype patch covers the
+        // former; the capture-phase 'submit' event listener covers the
+        // latter.
+        function normalizeForm(form, origin){
+          try {
+            if (!form) return;
+            var act = form.getAttribute && form.getAttribute('action');
+            var tgt = form.getAttribute && form.getAttribute('target');
+            var mth = form.getAttribute && form.getAttribute('method');
+            console.log('[openShim] form.submit(' + (origin||'') + ') method=' + (mth||'GET') +
+                        ' target=' + (tgt||'(unset)') + ' action=' +
+                        (act ? (act.length > 80 ? act.substring(0,80)+'…' : act) : '(empty)'));
+            if (!form.isConnected) {
+              form.style.display = 'none';
+              (document.body || document.documentElement).appendChild(form);
+              console.log('[openShim]   ↳ attached detached form');
+            }
+            // Decide the right target. Razorpay checkout runs inside an
+            // iframe (api.razorpay.com) on the merchant page. When it
+            // submits a form targeting _self, the bank's response loads
+            // inside that iframe — and every major bank sets
+            // X-Frame-Options: sameorigin / CSP frame-ancestors 'self'
+            // so the iframe load is blocked. In Chrome the form normally
+            // targets _blank and opens a new tab (outside any iframe),
+            // which works. We have no tabs, so we route to _top: the
+            // bank replaces the whole WebView, user completes auth, and
+            // the bank's redirect chain takes the WebView back to
+            // Razorpay → merchant's success URL. Standard redirect-mode.
+            //
+            // Only upgrade cross-origin submissions. Same-origin form
+            // submissions (e.g. merchant's own forms posting to
+            // /api/login) should stay on _self so they don't blow away
+            // surrounding Razorpay / merchant state.
+            var needsTop = false;
+            if (act) {
+              try {
+                var a = document.createElement('a');
+                a.href = act;
+                // Compare against TOP-level origin, not the iframe's.
+                // `top.location.host` throws in cross-origin iframes —
+                // fall back to current host in that case, which still
+                // catches the Razorpay-iframe-submits-to-bank case.
+                var topHost = location.host;
+                try { if (top && top.location && top.location.host) topHost = top.location.host; } catch(e){}
+                if (a.host && a.host !== location.host && a.host !== topHost) {
+                  needsTop = true;
+                }
+              } catch(e){ needsTop = true; }
+            }
+            if (needsTop || tgt === '_blank') {
+              if (tgt !== '_top') {
+                form.setAttribute('target', '_top');
+                console.log('[openShim]   ↳ retargeted ' + (tgt||'(unset)') + ' → _top');
+              }
+            }
+          } catch(e){}
+        }
+        try {
+          var origSubmit = HTMLFormElement.prototype.submit;
+          HTMLFormElement.prototype.submit = function(){
+            normalizeForm(this, 'proto');
+            return origSubmit.apply(this, arguments);
+          };
+        } catch(e){}
+        try {
+          document.addEventListener('submit', function(e){
+            normalizeForm(e.target, 'evt');
+          }, true); // capture-phase, runs before the browser submits
+        } catch(e){}
+      })();
+    ''',
+    injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
+  );
 
   // ── JS bridge ──────────────────────────────────────────────────
 
@@ -435,6 +682,59 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
       case 'upi':
         await _tryUpiIntents(payload['params'] as String? ?? '');
+        break;
+
+      // Routed from the window.open shim. Razorpay (and similar
+      // gateways) call `var w = window.open(''); w.location = url;` to
+      // launch UPI intents — our shim intercepts the location assign
+      // and dispatches here so the right native handler gets it.
+      case 'dispatchUrl':
+        final rawUrl = payload['url'] as String? ?? '';
+        if (rawUrl.isEmpty) break;
+        final dScheme = Uri.tryParse(rawUrl)?.scheme.toLowerCase() ?? '';
+        _logDebug('dispatchUrl $dScheme :: '
+            '${rawUrl.length > 140 ? "${rawUrl.substring(0, 140)}…" : rawUrl}');
+        if (dScheme == 'intent') {
+          await _handleAndroidIntent(rawUrl);
+        } else if (dScheme == 'http' || dScheme == 'https') {
+          // Razorpay sometimes does window.open('') then .location=<web
+          // URL> to navigate the popup. We have no popup — load it in
+          // the main WebView instead.
+          try {
+            await _controller?.loadUrl(urlRequest: URLRequest(url: WebUri(rawUrl)));
+          } catch (_) {}
+        } else if (dScheme == 'gpay') {
+          // gpay://upi/pay?… — Razorpay emits this for the GPay icon.
+          // Google Pay registers both `gpay://` and `upi://` schemes,
+          // but only `upi://` is guaranteed across Android versions.
+          // Try the literal URL first, then rewrite to upi:// if the
+          // OS can't resolve gpay://. The upi:// variant also lets
+          // other UPI apps (PhonePe, Paytm) handle it as a fallback.
+          bool launched = false;
+          try {
+            launched = await launchUrl(
+              Uri.parse(rawUrl),
+              mode: LaunchMode.externalApplication,
+            );
+          } catch (_) {}
+          if (!launched) {
+            final qIdx = rawUrl.indexOf('?');
+            if (qIdx > 0) {
+              final upiUrl = 'upi://pay${rawUrl.substring(qIdx)}';
+              _logDebug('dispatchUrl gpay→upi fallback :: $upiUrl');
+              try {
+                await launchUrl(
+                  Uri.parse(upiUrl),
+                  mode: LaunchMode.externalApplication,
+                );
+              } catch (e) {
+                _logDebug('upi fallback failed: $e');
+              }
+            }
+          }
+        } else {
+          await _launchExternal(rawUrl);
+        }
         break;
 
       case 'track':
@@ -709,6 +1009,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
               InAppWebView(
                 initialUrlRequest: URLRequest(url: WebUri(startUrl)),
                 initialSettings: initialSettings,
+                initialUserScripts: UnmodifiableListView<UserScript>([_openShim]),
                 pullToRefreshController: _pullToRefreshController,
                 onWebViewCreated: (c) {
                   _controller = c;
@@ -716,13 +1017,34 @@ class _WebViewScreenState extends State<WebViewScreen> {
                     handlerName: 'FlutterBridge',
                     callback: _onJsBridge,
                   );
+                  // Enable Chrome DevTools inspection (chrome://inspect
+                  // on a host connected via ADB). No-op on iOS. Has a
+                  // tiny RAM cost and leaks no user data by itself; the
+                  // device still has to be USB-tethered and unlocked
+                  // for a remote chrome to attach.
+                  InAppWebViewController.setWebContentsDebuggingEnabled(true)
+                      .catchError((_) {});
                 },
                 shouldOverrideUrlLoading: _onNavRequest,
-                onLoadStart: (_, __) {
+                // JS console → logcat + on-screen overlay. Razorpay
+                // logs the UPI-icon click handler's decisions here, so
+                // this is the single most useful hook for diagnosing
+                // "tapped GPay, nothing happened".
+                onConsoleMessage: (controller, msg) {
+                  final lvl = msg.messageLevel.toString().split('.').last;
+                  final m   = msg.message;
+                  final trimmed = m.length > 160 ? '${m.substring(0, 160)}…' : m;
+                  _logDebug('console[$lvl] $trimmed');
+                },
+                onLoadStart: (_, url) {
+                  final u = url?.toString() ?? '';
+                  _logDebug('load start :: ${u.length > 120 ? "${u.substring(0, 120)}…" : u}');
                   if (mounted) setState(() { _loading = true; _progress = 0; });
                   _armLoadTimeout();
                 },
                 onLoadStop: (c, url) async {
+                  final u = url?.toString() ?? '';
+                  _logDebug('load stop  :: ${u.length > 120 ? "${u.substring(0, 120)}…" : u}');
                   _cancelLoadTimeout();
                   if (mounted) setState(() { _loading = false; _progress = 1; });
                   _pullToRefreshController?.endRefreshing();
@@ -752,6 +1074,11 @@ class _WebViewScreenState extends State<WebViewScreen> {
                   final req    = createWindowAction.request;
                   final uri    = req.url;
                   final scheme = uri?.scheme ?? '';
+                  final method = req.method ?? 'GET';
+                  final bodyLen = req.body?.length ?? 0;
+                  final urlStr = uri?.toString() ?? '';
+                  final urlPreview = urlStr.length > 140 ? '${urlStr.substring(0, 140)}…' : urlStr;
+                  _logDebug('win.open $method $scheme (body=$bodyLen) :: $urlPreview');
                   if (uri == null) return false;
 
                   if (scheme == 'http' || scheme == 'https' || scheme == 'about') {
@@ -863,8 +1190,123 @@ class _WebViewScreenState extends State<WebViewScreen> {
                   right: 16, bottom: 24,
                   child: WhatsappShareButton(),
                 ),
+
+              // Invisible 5-tap target (top-left corner) to toggle the
+              // diagnostic overlay. Must sit ABOVE the WebView in the
+              // Stack so taps there don't fall through to the page.
+              Positioned(
+                top: 0, left: 0,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _onTopLeftTap,
+                  child: const SizedBox(width: 48, height: 48),
+                ),
+              ),
+
+              if (_debugVisible)
+                Positioned(
+                  left: 8, right: 8, bottom: 8,
+                  child: _DebugOverlay(
+                    lines: _debugEvents,
+                    onClear: () => setState(_debugEvents.clear),
+                    onClose: () => setState(() => _debugVisible = false),
+                    onCopy: () async {
+                      await Clipboard.setData(
+                        ClipboardData(text: _debugEvents.join('\n')),
+                      );
+                    },
+                  ),
+                ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Floating diagnostic overlay — rolling log of navigation, window.open
+/// and JS console events. Toggled by 5 rapid taps in the top-left
+/// corner of the WebView. Designed so the user can screenshot it + share
+/// it back without needing a PC (FLAG_SECURE is off by default on
+/// Maximoney, and toggleable via remote config regardless).
+class _DebugOverlay extends StatelessWidget {
+  final List<String> lines;
+  final VoidCallback onClear;
+  final VoidCallback onClose;
+  final Future<void> Function() onCopy;
+  const _DebugOverlay({
+    required this.lines,
+    required this.onClear,
+    required this.onClose,
+    required this.onCopy,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black.withValues(alpha: 0.82),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        constraints: const BoxConstraints(maxHeight: 280),
+        padding: const EdgeInsets.fromLTRB(10, 6, 6, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                const Text(
+                  'debug',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const Spacer(),
+                _pill('copy', () { onCopy(); }),
+                const SizedBox(width: 6),
+                _pill('clear', onClear),
+                const SizedBox(width: 6),
+                _pill('×', onClose),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Flexible(
+              child: SingleChildScrollView(
+                reverse: true,
+                child: Text(
+                  lines.isEmpty ? '(no events yet)' : lines.join('\n'),
+                  style: const TextStyle(
+                    color: Colors.greenAccent,
+                    fontFamily: 'monospace',
+                    fontSize: 10.5,
+                    height: 1.25,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _pill(String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.white12,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(color: Colors.white, fontSize: 11),
         ),
       ),
     );
