@@ -32,6 +32,20 @@ export function getAdminClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } }
+    {
+      auth: { persistSession: false },
+      // Disable Next.js's data cache for every PostgREST call.
+      // Supabase JS uses the global `fetch`, and Next.js caches `fetch`
+      // results by default (even on `dynamic = 'force-dynamic'` routes,
+      // because the Supabase client doesn't itself opt into `no-store`).
+      // Without this, an admin saving a URL change in the panel could see
+      // the API keep serving the OLD value for up to ~10 min while Next
+      // held the cached PostgREST response. This forces every query to
+      // hit the DB fresh.
+      global: {
+        fetch: (input: RequestInfo | URL, init?: RequestInit) =>
+          fetch(input, { ...init, cache: 'no-store' }),
+      },
+    }
   );
 }
