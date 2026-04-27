@@ -1,0 +1,6 @@
+#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"
+#include "Generated.xcconfig"
+// Per-app config (bundle ID, etc.). Each app provides one under
+// apps/<slug>/overrides/ios/Flutter/App.xcconfig. The `?` form
+// makes the include optional, so the shell still builds without it.
+#include? "App.xcconfig"

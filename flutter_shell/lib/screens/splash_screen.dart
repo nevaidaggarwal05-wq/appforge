@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:in_app_update/in_app_update.dart';
 
@@ -57,25 +59,25 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _boot() async {
     // Critical-path reads — all in parallel.
-    final deviceF   = DeviceInfoService.load();
+    final deviceF = DeviceInfoService.load();
     final sessionsF = SessionService.incrementAndGetCount();
-    final onlineF   = NetworkQualityService.isOnline();
-    final configF   = RemoteConfigService.initialize(
+    final onlineF = NetworkQualityService.isOnline();
+    final configF = RemoteConfigService.initialize(
       // No FCM token on the first pass. The background task below
       // refreshes with a token once FCM finishes initializing.
-      fcmToken:    null,
-      platform:    null,
+      fcmToken: null,
+      platform: null,
       deviceModel: null,
-      osVersion:   null,
-      appVersion:  null,
+      osVersion: null,
+      appVersion: null,
     );
 
-    final device    = await deviceF;
-    final sessions  = await sessionsF;
-    final online    = await onlineF;
+    final device = await deviceF;
+    final sessions = await sessionsF;
+    final online = await onlineF;
     final hasConfig = await configF;
 
-    AnalyticsService.deviceId   = device.deviceId;
+    AnalyticsService.deviceId = device.deviceId;
     AnalyticsService.appVersion = device.appVersion;
 
     // Apply admin-panel screenshot block (FLAG_SECURE). Off by
@@ -88,7 +90,8 @@ class _SplashScreenState extends State<SplashScreen> {
 
     // ── Background work — nothing here blocks the WebView ─────────
     unawaited(_initFcmAndPushToken(device));
-    unawaited(AnalyticsService.log('session_start', {'session_count': sessions}));
+    unawaited(
+        AnalyticsService.log('session_start', {'session_count': sessions}));
     unawaited(_checkInAppUpdate());
     if (RemoteConfigService.rootBlock) {
       unawaited(_enforceRootBlock());
@@ -124,11 +127,11 @@ class _SplashScreenState extends State<SplashScreen> {
       final token = NotificationService.fcmToken;
       if (token != null && token.isNotEmpty) {
         await RemoteConfigService.refresh(
-          fcmToken:    token,
-          platform:    device.platform,
+          fcmToken: token,
+          platform: device.platform,
           deviceModel: device.deviceModel,
-          osVersion:   device.osVersion,
-          appVersion:  device.appVersion,
+          osVersion: device.osVersion,
+          appVersion: device.appVersion,
         );
       }
     } catch (e) {
@@ -146,6 +149,12 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkInAppUpdate() async {
+    // `in_app_update` wraps the Play Core In-App Update API — Android only.
+    // On iOS the equivalent is force_update_screen.dart driven by the admin
+    // panel's force/soft update fields (no first-party Apple equivalent
+    // exists outside SKStoreReviewController, which is unrelated to forced
+    // upgrades). Bail early on iOS / web to avoid a MissingPluginException.
+    if (kIsWeb || !Platform.isAndroid) return;
     try {
       final info = await InAppUpdate.checkForUpdate();
       if (info.updateAvailability != UpdateAvailability.updateAvailable) return;
@@ -178,7 +187,7 @@ class _SplashScreenState extends State<SplashScreen> {
     final textLight = _isDark(bg);
 
     final label = RemoteConfigService.splashText;
-    final logo  = RemoteConfigService.splashLogoUrl;
+    final logo = RemoteConfigService.splashLogoUrl;
 
     return Scaffold(
       backgroundColor: bg,
@@ -209,7 +218,8 @@ class _SplashScreenState extends State<SplashScreen> {
             ],
             const SizedBox(height: 32),
             SizedBox(
-              width: 24, height: 24,
+              width: 24,
+              height: 24,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
                 valueColor: AlwaysStoppedAnimation(

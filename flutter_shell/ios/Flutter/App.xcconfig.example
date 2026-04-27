@@ -1,0 +1,12 @@
+// Per-app iOS config — copy to App.xcconfig and fill in.
+//
+// In normal use, you don't copy this manually; instead the per-app
+// override at `apps/<slug>/overrides/ios/Flutter/App.xcconfig` is
+// rsync'd into the build dir by `scripts/sync-app.sh`.
+//
+// All keys here are referenced by `ios/Runner.xcodeproj/project.pbxproj`
+// as `$(APP_BUNDLE_IDENTIFIER)` etc., and by Info.plist via
+// `$(PRODUCT_BUNDLE_IDENTIFIER)` (which is itself = $(APP_BUNDLE_IDENTIFIER)).
+
+APP_BUNDLE_IDENTIFIER = com.appforge.appTemplate
+APP_DISPLAY_NAME      = App Template

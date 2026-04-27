@@ -8,7 +8,14 @@
 #   • apps/<app>/overrides/pubspec.yaml              (version: x.y.z+N)
 #   • apps/<app>/overrides/android/app/build.gradle  (versionCode / versionName)
 #
-# After running, commit the change before calling release.sh.
+# iOS does NOT need a separate file edit: Info.plist reads
+# $(FLUTTER_BUILD_NAME) / $(FLUTTER_BUILD_NUMBER), and Flutter populates
+# those from pubspec.yaml's `version:` line at build time. So bumping
+# pubspec.yaml above propagates to both Android and iOS.
+#
+# After running, commit the diff, then call:
+#   scripts/release.sh <app>      (Android AAB)
+#   scripts/release-ios.sh <app>  (iOS IPA — requires Xcode + Apple Dev account)
 # ─────────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -49,4 +56,6 @@ sed -i '' -E "s/^version:.*/version: $NEW_VNAME+$NEW_VCODE/" "$PUB"
 sed -i '' -E "s/versionCode +[0-9]+/versionCode $NEW_VCODE/" "$GRADLE"
 sed -i '' -E "s/versionName +\"[^\"]+\"/versionName \"$NEW_VNAME\"/" "$GRADLE"
 
-echo "✓ bumped. commit the diff, then run scripts/release.sh $APP"
+echo "✓ bumped. commit the diff, then run:"
+echo "    scripts/release.sh $APP       # Android AAB"
+echo "    scripts/release-ios.sh $APP   # iOS IPA"

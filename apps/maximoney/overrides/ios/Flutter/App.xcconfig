@@ -1,0 +1,8 @@
+// Maximoney iOS — per-app build settings.
+//
+// This file is rsync'd into the build dir by `scripts/sync-app.sh` and
+// included by Debug.xcconfig + Release.xcconfig in the shell. Keys here
+// are referenced by Runner.xcodeproj/project.pbxproj.
+
+APP_BUNDLE_IDENTIFIER = com.maximoney.credit
+APP_DISPLAY_NAME      = Maximoney

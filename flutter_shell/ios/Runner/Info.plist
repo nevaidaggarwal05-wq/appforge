@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- ─────────── Identity ───────────
+	     CFBundleDisplayName + CFBundleName get overridden per-app via
+	     apps/<slug>/overrides/ios/Runner/Info.plist (rsync overlay).
+	     CFBundleIdentifier comes from PRODUCT_BUNDLE_IDENTIFIER, set in
+	     the per-app project.pbxproj. -->
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>App Template</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>app_template</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+
+	<!-- ─────────── Scenes / launch ─────────── -->
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneClassName</key>
+					<string>UIWindowScene</string>
+					<key>UISceneConfigurationName</key>
+					<string>flutter</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+					<key>UISceneStoryboardFile</key>
+					<string>Main</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+	</array>
+
+	<!-- ─────────── Permission usage strings ───────────
+	     Apple rejects builds that request a permission without a usage
+	     string. These mirror the Android permissions in
+	     android/app/src/main/AndroidManifest.xml. The wording here appears
+	     verbatim in the OS permission dialog. Per-app overrides may rewrite
+	     these to use the brand name. -->
+	<key>NSCameraUsageDescription</key>
+	<string>This app uses the camera so you can scan documents and upload photos.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs access to your photos so you can upload images.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>This app saves downloaded files and screenshots to your photos.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app uses the microphone for voice input on the website.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app uses your location to personalize the experience inside the app.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>This app uses Face ID to keep your session secure.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>This app may access your contacts when you choose to share content.</string>
+
+	<!-- ─────────── App Transport Security ───────────
+	     HTTPS-only by default, mirroring the Android
+	     usesCleartextTraffic="false" setting. If a specific app needs
+	     cleartext for a known domain, the per-app override Info.plist
+	     should add an NSExceptionDomains entry. -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+
+	<!-- ─────────── URL schemes the app can OPEN ───────────
+	     iOS requires explicit LSApplicationQueriesSchemes for canOpenURL()
+	     to succeed on non-Apple schemes. Mirrors the Android <queries> block
+	     for UPI + payment app intents (Razorpay flows). -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>upi</string>
+		<string>tez</string>
+		<string>phonepe</string>
+		<string>paytmmp</string>
+		<string>bhim</string>
+		<string>credpay</string>
+		<string>whatsapp</string>
+		<string>tel</string>
+		<string>sms</string>
+		<string>mailto</string>
+		<string>itms-apps</string>
+	</array>
+
+	<!-- ─────────── URL schemes the app RECEIVES ───────────
+	     Per-app OAuth callback scheme is set in the override Info.plist —
+	     each app uses its own (e.g. "maximoney" for Maximoney). The shell
+	     ships with no CFBundleURLTypes; the override appends them. -->
+
+	<!-- ─────────── Background modes ───────────
+	     remote-notification: required for FCM data-only pushes to wake
+	     the app. fetch: lets the app refresh remote config in background. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+		<string>fetch</string>
+	</array>
+
+	<!-- ─────────── FCM ───────────
+	     We disable Firebase's swizzling-based APNs proxy and wire the APNs
+	     token explicitly in AppDelegate.swift. Per-app GoogleService-Info.plist
+	     lives under apps/<slug>/overrides/ios/Runner/. -->
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<false/>
+
+	<!-- ─────────── AdMob ───────────
+	     Same story as Android: the iOS MobileAds SDK reads
+	     GADApplicationIdentifier at init, before Dart runs. The per-app
+	     override Info.plist replaces this placeholder with the real
+	     ca-app-pub ID from AdMob. iOS 14+ also requires the SKAdNetwork
+	     identifier list (one entry per ad network); start with Google's
+	     own and add more when integrating mediation. -->
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-3940256099942544~1458002511</string>
+	<key>SKAdNetworkItems</key>
+	<array>
+		<dict>
+			<key>SKAdNetworkIdentifier</key>
+			<string>cstr6suwn9.skadnetwork</string>
+		</dict>
+	</array>
+
+	<!-- ─────────── Misc ─────────── -->
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<false/>
+	<key>UIStatusBarStyle</key>
+	<string>UIStatusBarStyleDefault</string>
+	<!-- iOS file picker access for upload flows -->
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+</dict>
+</plist>

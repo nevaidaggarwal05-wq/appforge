@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Maximoney-specific overrides. This file replaces the shell's
+	     ios/Runner/Info.plist wholesale via the rsync overlay in
+	     scripts/sync-app.sh. Keep all Info.plist keys here, not just the
+	     ones that differ — rsync replacement is whole-file, not key-merge. -->
+
+	<!-- Identity -->
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Maximoney</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Maximoney</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+
+	<!-- Scenes / launch -->
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneClassName</key>
+					<string>UIWindowScene</string>
+					<key>UISceneConfigurationName</key>
+					<string>flutter</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+					<key>UISceneStoryboardFile</key>
+					<string>Main</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+	</array>
+
+	<!-- Permission usage strings (Maximoney brand voice) -->
+	<key>NSCameraUsageDescription</key>
+	<string>Maximoney uses your camera to scan documents during KYC and to upload supporting photos.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Maximoney needs access to your photos so you can upload supporting documents.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Maximoney saves downloaded statements and screenshots to your photos.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Maximoney uses the microphone for voice input on the website.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Maximoney uses your location to personalize loan offers in your area.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Maximoney uses Face ID to keep your loan account secure.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Maximoney may access your contacts when you choose to share offers.</string>
+
+	<!-- ATS — HTTPS only -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+
+	<!-- URL schemes the app can OPEN (UPI / payment intents) -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>upi</string>
+		<string>tez</string>
+		<string>phonepe</string>
+		<string>paytmmp</string>
+		<string>bhim</string>
+		<string>credpay</string>
+		<string>whatsapp</string>
+		<string>tel</string>
+		<string>sms</string>
+		<string>mailto</string>
+		<string>itms-apps</string>
+	</array>
+
+	<!-- URL schemes the app RECEIVES (OAuth callbacks, deep links).
+	     Mirrors the Android intent-filter for `maximoney://` in the
+	     manifest override. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.maximoney.credit.oauth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>maximoney</string>
+			</array>
+		</dict>
+	</array>
+
+	<!-- Universal Links (App Links equivalent) — wire the credit.maximoney.in
+	     domain. Apple's apple-app-site-association file must be hosted at
+	     https://credit.maximoney.in/.well-known/apple-app-site-association
+	     for this to actually verify; matches the Android assetlinks.json. -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:credit.maximoney.in</string>
+	</array>
+
+	<!-- Background modes -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+		<string>fetch</string>
+	</array>
+
+	<!-- FCM swizzling off — wired explicitly in AppDelegate.swift -->
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<false/>
+
+	<!-- AdMob — currently using Google's iOS test placeholder. Replace
+	     with the real Maximoney `ca-app-pub-XXX~YYY` from the AdMob
+	     console before going live. The same value should also be entered
+	     in the admin panel under App config → AdMob → "AdMob App ID". -->
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-3940256099942544~1458002511</string>
+	<key>SKAdNetworkItems</key>
+	<array>
+		<dict>
+			<key>SKAdNetworkIdentifier</key>
+			<string>cstr6suwn9.skadnetwork</string>
+		</dict>
+	</array>
+
+	<!-- Misc -->
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<false/>
+	<key>UIStatusBarStyle</key>
+	<string>UIStatusBarStyleDefault</string>
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+</dict>
+</plist>
