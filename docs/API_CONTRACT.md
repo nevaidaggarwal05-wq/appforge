@@ -47,6 +47,11 @@ All query params are optional. If provided, the backend registers/updates the `f
     "session_persistence": true,
     "network_detection":   true
   },
+  "admob": {
+    "position":       "none",
+    "app_id":         "ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY",
+    "banner_unit_id": "ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ"
+  },
   "force_update": {
     "min_version_code": 0,
     "message":          "",
@@ -73,8 +78,18 @@ All query params are optional. If provided, the backend registers/updates the `f
 ### Response headers
 
 ```
-Cache-Control: public, max-age=60, s-maxage=60, stale-while-revalidate=300
+Cache-Control:               no-store, no-cache, must-revalidate
+CDN-Cache-Control:           no-store
+Vercel-CDN-Cache-Control:    no-store
 ```
+
+The shell does its own offline-first caching in SharedPreferences (next-launch-applies pattern). The server intentionally does NOT cache so admin-panel changes propagate to every device on its next config fetch (which Flutter does on every cold start + every WebView resume).
+
+### AdMob fields — important caveat
+
+- **`admob.app_id`** is informational only. Google's MobileAds SDK reads the App ID from `AndroidManifest.xml` `<meta-data>` *before* any Dart code runs, so it cannot be runtime-driven. The shell surfaces this value so it can warn during dev if the manifest-baked App ID drifts from what's in the admin panel.
+- **`admob.banner_unit_id`** IS runtime-driven. The shell reads this on every config refresh and uses the value for the next ad request — so changing it in the admin panel propagates without a rebuild.
+- **`admob.position`** is runtime-driven. `'none'` hides the banner entirely.
 
 ### Flutter Dart equivalent (RemoteConfig model)
 

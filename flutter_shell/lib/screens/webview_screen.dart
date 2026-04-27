@@ -44,6 +44,7 @@ import '../services/secure_storage_service.dart';
 import '../services/session_service.dart';
 import '../services/share_service.dart';
 import '../utils/logger.dart';
+import '../widgets/admob_banner.dart';
 import '../widgets/in_app_update_banner.dart';
 import '../widgets/whatsapp_share_button.dart';
 
@@ -140,8 +141,8 @@ class _WebViewScreenState extends State<WebViewScreen> {
     // Version pinned to a recent stable — gateways only care that this
     // IS Chrome, not the exact build number.
     String ua = 'Mozilla/5.0 (Linux; Android $androidVersion; $model) '
-                'AppleWebKit/537.36 (KHTML, like Gecko) '
-                'Chrome/124.0.6367.179 Mobile Safari/537.36';
+        'AppleWebKit/537.36 (KHTML, like Gecko) '
+        'Chrome/124.0.6367.179 Mobile Safari/537.36';
 
     final suffix = RemoteConfigService.userAgentSuffix ?? '';
     if (suffix.isNotEmpty) ua = '$ua $suffix';
@@ -594,7 +595,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
     }
 
     final action = payload['action'] as String?;
-    final id     = payload['__id'];
+    final id = payload['__id'];
     dynamic result;
 
     switch (action) {
@@ -615,10 +616,11 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
       case 'share':
         final text = payload['text'] as String? ?? '';
-        final url  = payload['url']  as String? ?? '';
-        final msg  = Uri.encodeComponent([text, url].where((s) => s.isNotEmpty).join(' '));
+        final url = payload['url'] as String? ?? '';
+        final msg = Uri.encodeComponent(
+            [text, url].where((s) => s.isNotEmpty).join(' '));
         final number = RemoteConfigService.whatsappNumber ?? '';
-        final wa   = number.isNotEmpty
+        final wa = number.isNotEmpty
             ? Uri.parse('https://wa.me/$number?text=$msg')
             : Uri.parse('https://wa.me/?text=$msg');
         await _launchExternal(wa.toString());
@@ -627,7 +629,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
       case 'shareSystem':
         await ShareService.share(
           text: payload['text'] as String?,
-          url:  payload['url']  as String?,
+          url: payload['url'] as String?,
         );
         break;
 
@@ -650,7 +652,8 @@ class _WebViewScreenState extends State<WebViewScreen> {
           // URL> to navigate the popup. We have no popup — load it in
           // the main WebView instead.
           try {
-            await _controller?.loadUrl(urlRequest: URLRequest(url: WebUri(rawUrl)));
+            await _controller?.loadUrl(
+                urlRequest: URLRequest(url: WebUri(rawUrl)));
           } catch (_) {}
         } else if (dScheme == 'gpay') {
           // gpay://upi/pay?… — Razorpay emits this for the GPay icon.
@@ -687,23 +690,31 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
       case 'track':
         final event = payload['event'] as String? ?? '';
-        final props = (payload['props'] as Map?)?.cast<String, dynamic>() ?? const {};
+        final props =
+            (payload['props'] as Map?)?.cast<String, dynamic>() ?? const {};
         if (event.isNotEmpty) await AnalyticsService.log(event, props);
         break;
 
       case 'openCustomTab':
         final url = payload['url'] as String? ?? '';
         final uri = Uri.tryParse(url);
-        if (uri != null && mounted) await CustomTabsService.launch(context, uri);
+        if (uri != null && mounted)
+          await CustomTabsService.launch(context, uri);
         break;
 
       case 'scanQR':
-        if (!RemoteConfigService.scannerEnabled || !mounted) { result = null; break; }
+        if (!RemoteConfigService.scannerEnabled || !mounted) {
+          result = null;
+          break;
+        }
         result = await ScannerService.scan(context);
         break;
 
       case 'getLocation':
-        if (!RemoteConfigService.geolocationEnabled) { result = null; break; }
+        if (!RemoteConfigService.geolocationEnabled) {
+          result = null;
+          break;
+        }
         result = await LocationService.getCurrentPosition();
         break;
 
@@ -717,14 +728,15 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
       case 'secureSet':
         await SecureStorageService.set(
-          payload['key']   as String? ?? '',
+          payload['key'] as String? ?? '',
           payload['value'] as String? ?? '',
         );
         result = true;
         break;
 
       case 'secureGet':
-        result = await SecureStorageService.get(payload['key'] as String? ?? '');
+        result =
+            await SecureStorageService.get(payload['key'] as String? ?? '');
         break;
 
       case 'secureDel':
@@ -744,7 +756,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
       case 'download':
         if (!RemoteConfigService.downloadsEnabled) break;
         final url = payload['url'] as String? ?? '';
-        final fn  = (payload['filename'] as String?)?.trim();
+        final fn = (payload['filename'] as String?)?.trim();
         if (url.isEmpty) break;
         final name = (fn != null && fn.isNotEmpty)
             ? fn
@@ -761,7 +773,8 @@ class _WebViewScreenState extends State<WebViewScreen> {
       final jsValue = jsonEncode(result);
       try {
         await _controller?.evaluateJavascript(
-          source: 'if(window._flutterResolve) window._flutterResolve($id, $jsValue);',
+          source:
+              'if(window._flutterResolve) window._flutterResolve($id, $jsValue);',
         );
       } catch (_) {}
     }
@@ -776,13 +789,17 @@ class _WebViewScreenState extends State<WebViewScreen> {
         }
       })();
     ''';
-    try { await _controller?.evaluateJavascript(source: js); } catch (_) {}
+    try {
+      await _controller?.evaluateJavascript(source: js);
+    } catch (_) {}
   }
 
   // ── JS injection on page load ──────────────────────────────────
 
   Future<void> _injectBridge() async {
-    try { await _controller?.evaluateJavascript(source: _bridgeJs); } catch (e) {
+    try {
+      await _controller?.evaluateJavascript(source: _bridgeJs);
+    } catch (e) {
       Log.w('[bridge] inject failed: $e');
     }
   }
@@ -790,12 +807,12 @@ class _WebViewScreenState extends State<WebViewScreen> {
   Future<void> _injectEnvironment() async {
     final device = await DeviceInfoService.load();
     final deviceJson = jsonEncode({
-      'platform':      device.platform,
-      'os_version':    device.osVersion,
-      'device_model':  device.deviceModel,
-      'app_version':   device.appVersion,
-      'build_number':  device.buildNumber,
-      'device_id':     device.deviceId,
+      'platform': device.platform,
+      'os_version': device.osVersion,
+      'device_model': device.deviceModel,
+      'app_version': device.appVersion,
+      'build_number': device.buildNumber,
+      'device_id': device.deviceId,
     });
     final token = NotificationService.fcmToken ?? '';
     final js = '''
@@ -806,7 +823,9 @@ class _WebViewScreenState extends State<WebViewScreen> {
         window.flutter.fcmToken = window.__flutter_fcmToken;
       }
     ''';
-    try { await _controller?.evaluateJavascript(source: js); } catch (_) {}
+    try {
+      await _controller?.evaluateJavascript(source: js);
+    } catch (_) {}
   }
 
   Future<void> _injectDarkModeClass() async {
@@ -816,7 +835,9 @@ class _WebViewScreenState extends State<WebViewScreen> {
         try { document.documentElement.classList.${enabled ? "add" : "remove"}('app-dark-mode'); } catch(e){}
       })();
     ''';
-    try { await _controller?.evaluateJavascript(source: js); } catch (_) {}
+    try {
+      await _controller?.evaluateJavascript(source: js);
+    } catch (_) {}
   }
 
   // ── Push deep link ─────────────────────────────────────────────
@@ -825,9 +846,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
     final url = NotificationService.deepLinkUrl.value;
     if (url == null || url.isEmpty) return;
 
-    final resolved = url.startsWith('http')
-        ? url
-        : _resolveRelative(url);
+    final resolved = url.startsWith('http') ? url : _resolveRelative(url);
     _controller?.loadUrl(urlRequest: URLRequest(url: WebUri(resolved)));
     NotificationService.deepLinkUrl.value = null;
   }
@@ -865,7 +884,9 @@ class _WebViewScreenState extends State<WebViewScreen> {
       if (!mounted) return;
       if (_loading) {
         setState(() => _timedOut = true);
-        try { _controller?.stopLoading(); } catch (_) {}
+        try {
+          _controller?.stopLoading();
+        } catch (_) {}
         Log.w('[webview] load timed out after ${ms}ms');
       }
     });
@@ -944,174 +965,218 @@ class _WebViewScreenState extends State<WebViewScreen> {
     );
 
     if (RemoteConfigService.screenshotBlock && !kIsWeb) {
-      SystemChannels.textInput.invokeMethod('TextInput.hide').catchError((_) => null);
+      SystemChannels.textInput
+          .invokeMethod('TextInput.hide')
+          .catchError((_) => null);
     }
+
+    // AdMob banner placement — driven by RemoteConfigService.admobPosition
+    // ('top' | 'bottom' | 'none'). Only renders when both admobEnabled is
+    // true AND position is top/bottom. Sits inside SafeArea so it never
+    // collides with system insets.
+    final showAdmob = !kIsWeb && RemoteConfigService.admobEnabled;
+    final admobAtTop = showAdmob && RemoteConfigService.admobPosition == 'top';
+    final admobAtBot =
+        showAdmob && RemoteConfigService.admobPosition == 'bottom';
 
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: _onPopInvoked,
       child: Scaffold(
         body: SafeArea(
-          child: Stack(
+          child: Column(
             children: [
-              InAppWebView(
-                initialUrlRequest: URLRequest(url: WebUri(startUrl)),
-                initialSettings: initialSettings,
-                initialUserScripts: UnmodifiableListView<UserScript>([_openShim]),
-                pullToRefreshController: _pullToRefreshController,
-                onWebViewCreated: (c) {
-                  _controller = c;
-                  c.addJavaScriptHandler(
-                    handlerName: 'FlutterBridge',
-                    callback: _onJsBridge,
-                  );
-                },
-                shouldOverrideUrlLoading: _onNavRequest,
-                onLoadStart: (_, __) {
-                  if (mounted) setState(() { _loading = true; _progress = 0; });
-                  _armLoadTimeout();
-                },
-                onLoadStop: (c, url) async {
-                  _cancelLoadTimeout();
-                  if (mounted) setState(() { _loading = false; _progress = 1; });
-                  _pullToRefreshController?.endRefreshing();
-                  await _injectBridge();
-                  await _injectEnvironment();
-                  await _injectDarkModeClass();
-                  if (url != null) await SessionService.saveLastUrl(url.toString());
-                },
-                onProgressChanged: (_, p) {
-                  if (mounted) setState(() => _progress = p / 100.0);
-                  if (p >= 100) _pullToRefreshController?.endRefreshing();
-                },
-                onReceivedError: (_, __, err) =>
-                    Log.w('[webview] ${err.description}'),
-                onReceivedHttpError: (_, __, err) =>
-                    Log.w('[webview] http ${err.statusCode}: ${err.reasonPhrase}'),
+              if (admobAtTop) const AdmobBanner(),
+              Expanded(
+                child: Stack(
+                  children: [
+                    InAppWebView(
+                      initialUrlRequest: URLRequest(url: WebUri(startUrl)),
+                      initialSettings: initialSettings,
+                      initialUserScripts:
+                          UnmodifiableListView<UserScript>([_openShim]),
+                      pullToRefreshController: _pullToRefreshController,
+                      onWebViewCreated: (c) {
+                        _controller = c;
+                        c.addJavaScriptHandler(
+                          handlerName: 'FlutterBridge',
+                          callback: _onJsBridge,
+                        );
+                      },
+                      shouldOverrideUrlLoading: _onNavRequest,
+                      onLoadStart: (_, __) {
+                        if (mounted)
+                          setState(() {
+                            _loading = true;
+                            _progress = 0;
+                          });
+                        _armLoadTimeout();
+                      },
+                      onLoadStop: (c, url) async {
+                        _cancelLoadTimeout();
+                        if (mounted)
+                          setState(() {
+                            _loading = false;
+                            _progress = 1;
+                          });
+                        _pullToRefreshController?.endRefreshing();
+                        await _injectBridge();
+                        await _injectEnvironment();
+                        await _injectDarkModeClass();
+                        if (url != null)
+                          await SessionService.saveLastUrl(url.toString());
+                      },
+                      onProgressChanged: (_, p) {
+                        if (mounted) setState(() => _progress = p / 100.0);
+                        if (p >= 100) _pullToRefreshController?.endRefreshing();
+                      },
+                      onReceivedError: (_, __, err) =>
+                          Log.w('[webview] ${err.description}'),
+                      onReceivedHttpError: (_, __, err) => Log.w(
+                          '[webview] http ${err.statusCode}: ${err.reasonPhrase}'),
 
-                // Handle target=_blank / window.open. Razorpay uses this
-                // for (a) UPI intent: URIs and (b) bank netbanking POSTs.
-                // If we naively `loadUrl(URLRequest(url:))` we lose the
-                // request method + headers + body, so POST-based bank
-                // redirects fail silently. Forward the full request for
-                // http(s), and hand off to the external launcher for
-                // every non-web scheme so UPI/intent/upi/tel/mailto all
-                // work the same as they do from a regular link tap.
-                onCreateWindow: (controller, createWindowAction) async {
-                  final req    = createWindowAction.request;
-                  final uri    = req.url;
-                  final scheme = uri?.scheme ?? '';
-                  if (uri == null) return false;
+                      // Handle target=_blank / window.open. Razorpay uses this
+                      // for (a) UPI intent: URIs and (b) bank netbanking POSTs.
+                      // If we naively `loadUrl(URLRequest(url:))` we lose the
+                      // request method + headers + body, so POST-based bank
+                      // redirects fail silently. Forward the full request for
+                      // http(s), and hand off to the external launcher for
+                      // every non-web scheme so UPI/intent/upi/tel/mailto all
+                      // work the same as they do from a regular link tap.
+                      onCreateWindow: (controller, createWindowAction) async {
+                        final req = createWindowAction.request;
+                        final uri = req.url;
+                        final scheme = uri?.scheme ?? '';
+                        if (uri == null) return false;
 
-                  if (scheme == 'http' || scheme == 'https' || scheme == 'about') {
-                    // Load in the existing WebView, preserving method + body.
-                    await controller.loadUrl(urlRequest: req);
-                    return false;
-                  }
-                  if (scheme == 'intent') {
-                    await _handleAndroidIntent(uri.toString());
-                    return false;
-                  }
-                  // upi / tel / mailto / sms / market / whatsapp / etc.
-                  await _launchExternal(uri.toString());
-                  return false;
-                },
+                        if (scheme == 'http' ||
+                            scheme == 'https' ||
+                            scheme == 'about') {
+                          // Load in the existing WebView, preserving method + body.
+                          await controller.loadUrl(urlRequest: req);
+                          return false;
+                        }
+                        if (scheme == 'intent') {
+                          await _handleAndroidIntent(uri.toString());
+                          return false;
+                        }
+                        // upi / tel / mailto / sms / market / whatsapp / etc.
+                        await _launchExternal(uri.toString());
+                        return false;
+                      },
 
-                // Runtime WebView permission requests (mic, camera, geo).
-                // We grant only the resources enabled in the admin panel;
-                // string-matching covers API differences across
-                // flutter_inappwebview versions.
-                onPermissionRequest: (controller, req) async {
-                  final grant = <PermissionResourceType>[];
-                  for (final r in req.resources) {
-                    final s = r.toString().toUpperCase();
-                    if (s.contains('CAMERA') &&
-                        (RemoteConfigService.scannerEnabled ||
-                         RemoteConfigService.fileUploadEnabled)) {
-                      grant.add(r);
-                    } else if (s.contains('MICROPHONE') ||
-                               s.contains('AUDIO_CAPTURE')) {
-                      grant.add(r);
-                    } else if (s.contains('GEOLOCATION') &&
-                               RemoteConfigService.geolocationEnabled) {
-                      grant.add(r);
-                    }
-                  }
-                  return PermissionResponse(
-                    resources: grant,
-                    action: grant.isEmpty
-                        ? PermissionResponseAction.DENY
-                        : PermissionResponseAction.GRANT,
-                  );
-                },
+                      // Runtime WebView permission requests (mic, camera, geo).
+                      // We grant only the resources enabled in the admin panel;
+                      // string-matching covers API differences across
+                      // flutter_inappwebview versions.
+                      onPermissionRequest: (controller, req) async {
+                        final grant = <PermissionResourceType>[];
+                        for (final r in req.resources) {
+                          final s = r.toString().toUpperCase();
+                          if (s.contains('CAMERA') &&
+                              (RemoteConfigService.scannerEnabled ||
+                                  RemoteConfigService.fileUploadEnabled)) {
+                            grant.add(r);
+                          } else if (s.contains('MICROPHONE') ||
+                              s.contains('AUDIO_CAPTURE')) {
+                            grant.add(r);
+                          } else if (s.contains('GEOLOCATION') &&
+                              RemoteConfigService.geolocationEnabled) {
+                            grant.add(r);
+                          }
+                        }
+                        return PermissionResponse(
+                          resources: grant,
+                          action: grant.isEmpty
+                              ? PermissionResponseAction.DENY
+                              : PermissionResponseAction.GRANT,
+                        );
+                      },
 
-                // Android: HTML5 navigator.geolocation prompt.
-                onGeolocationPermissionsShowPrompt: (controller, origin) async {
-                  final allow = RemoteConfigService.geolocationEnabled;
-                  return GeolocationPermissionShowPromptResponse(
-                    origin: origin,
-                    allow: allow,
-                    retain: allow,
-                  );
-                },
+                      // Android: HTML5 navigator.geolocation prompt.
+                      onGeolocationPermissionsShowPrompt:
+                          (controller, origin) async {
+                        final allow = RemoteConfigService.geolocationEnabled;
+                        return GeolocationPermissionShowPromptResponse(
+                          origin: origin,
+                          allow: allow,
+                          retain: allow,
+                        );
+                      },
 
-                // Downloads — route through flutter_downloader so the file
-                // lands in ~/Download with a system notification.
-                onDownloadStartRequest: (controller, req) async {
-                  if (!RemoteConfigService.downloadsEnabled) return;
-                  final name = req.suggestedFilename ??
-                      Uri.tryParse(req.url.toString())?.pathSegments.lastOrNull ??
-                      'download';
-                  await DownloadService.enqueue(
-                    url: req.url.toString(),
-                    fileName: name,
-                  );
-                },
+                      // Downloads — route through flutter_downloader so the file
+                      // lands in ~/Download with a system notification.
+                      onDownloadStartRequest: (controller, req) async {
+                        if (!RemoteConfigService.downloadsEnabled) return;
+                        final name = req.suggestedFilename ??
+                            Uri.tryParse(req.url.toString())
+                                ?.pathSegments
+                                .lastOrNull ??
+                            'download';
+                        await DownloadService.enqueue(
+                          url: req.url.toString(),
+                          fileName: name,
+                        );
+                      },
 
-                // Recover from WebView renderer crashes (OOM / malformed pages)
-                // by reloading the start URL instead of letting the shell die.
-                onRenderProcessGone: (controller, detail) async {
-                  Log.w('[webview] render process gone — reloading');
-                  try { await controller.loadUrl(urlRequest: URLRequest(url: WebUri(_resolveStartUrl()))); } catch (_) {}
-                },
+                      // Recover from WebView renderer crashes (OOM / malformed pages)
+                      // by reloading the start URL instead of letting the shell die.
+                      onRenderProcessGone: (controller, detail) async {
+                        Log.w('[webview] render process gone — reloading');
+                        try {
+                          await controller.loadUrl(
+                              urlRequest:
+                                  URLRequest(url: WebUri(_resolveStartUrl())));
+                        } catch (_) {}
+                      },
+                    ),
+
+                    // Real-percent progress bar (replaces the old indeterminate one).
+                    if (_loading && _progress < 1)
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: LinearProgressIndicator(
+                          value: _progress > 0 ? _progress : null,
+                          minHeight: 2,
+                        ),
+                      ),
+
+                    // Timeout screen overlay.
+                    if (_timedOut)
+                      Positioned.fill(
+                        child: _TimeoutOverlay(
+                          onRetry: () {
+                            setState(() => _timedOut = false);
+                            _controller?.reload();
+                            _armLoadTimeout();
+                          },
+                        ),
+                      ),
+
+                    if (_showSoftUpdate)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: InAppUpdateBanner(
+                          message: RemoteConfigService.softUpdateMessage,
+                          onDismiss: () =>
+                              setState(() => _showSoftUpdate = false),
+                        ),
+                      ),
+
+                    if (RemoteConfigService.whatsappEnabled)
+                      const Positioned(
+                        right: 16,
+                        bottom: 24,
+                        child: WhatsappShareButton(),
+                      ),
+                  ],
+                ),
               ),
-
-              // Real-percent progress bar (replaces the old indeterminate one).
-              if (_loading && _progress < 1)
-                Positioned(
-                  top: 0, left: 0, right: 0,
-                  child: LinearProgressIndicator(
-                    value: _progress > 0 ? _progress : null,
-                    minHeight: 2,
-                  ),
-                ),
-
-              // Timeout screen overlay.
-              if (_timedOut)
-                Positioned.fill(
-                  child: _TimeoutOverlay(
-                    onRetry: () {
-                      setState(() => _timedOut = false);
-                      _controller?.reload();
-                      _armLoadTimeout();
-                    },
-                  ),
-                ),
-
-              if (_showSoftUpdate)
-                Positioned(
-                  left: 0, right: 0, bottom: 0,
-                  child: InAppUpdateBanner(
-                    message: RemoteConfigService.softUpdateMessage,
-                    onDismiss: () => setState(() => _showSoftUpdate = false),
-                  ),
-                ),
-
-              if (RemoteConfigService.whatsappEnabled)
-                const Positioned(
-                  right: 16, bottom: 24,
-                  child: WhatsappShareButton(),
-                ),
+              if (admobAtBot) const AdmobBanner(),
             ],
           ),
         ),
@@ -1152,4 +1217,3 @@ class _TimeoutOverlay extends StatelessWidget {
     );
   }
 }
-

@@ -84,13 +84,18 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:requestLegacyExternalStorage="true"
-        android:usesCleartextTraffic="false">
+        android:usesCleartextTraffic="false"
+        android:enableOnBackInvokedCallback="true">
 
-        <!-- AdMob App ID: Google test placeholder; REPLACE for production -->
-        <!-- REPLACE -->
+        <!-- AdMob App ID: per-app value injected via Gradle's manifestPlaceholders.
+             Each app sets `manifestPlaceholders.admobAppId` in its
+             `apps/<slug>/overrides/android/app/build.gradle` defaultConfig
+             block. Falls back to Google's official test placeholder so dev
+             builds don't crash. Cannot be runtime-driven — Google's MobileAds
+             SDK reads this at init (before any Dart code runs). -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713"/>
+            android:value="${admobAppId}"/>
 
         <!-- FCM default notification icon + channel -->
         <meta-data

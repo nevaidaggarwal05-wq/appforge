@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import 'app_config.dart';
 import 'firebase_options.dart';
@@ -35,7 +36,8 @@ void main() {
 
     // Firebase (core + crashlytics + messaging)
     try {
-      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+      await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform);
 
       // Forward Flutter errors to both Crashlytics and our backend
       FlutterError.onError = (details) {
@@ -48,6 +50,17 @@ void main() {
 
     // Background FCM handler must be registered before runApp
     NotificationService.registerBackgroundHandler();
+
+    // AdMob — initialize SDK once at startup. Safe to call even when
+    // admob is disabled in remote config; we just won't ask for any ads.
+    // No-op on web (the package has no web impl).
+    if (!kIsWeb) {
+      try {
+        await MobileAds.instance.initialize();
+      } catch (e) {
+        Log.w('[admob] init failed: $e');
+      }
+    }
 
     runApp(const AppTemplateApp());
   }, (error, stack) {
@@ -79,7 +92,8 @@ class AppTemplateApp extends StatefulWidget {
   State<AppTemplateApp> createState() => _AppTemplateAppState();
 }
 
-class _AppTemplateAppState extends State<AppTemplateApp> with WidgetsBindingObserver {
+class _AppTemplateAppState extends State<AppTemplateApp>
+    with WidgetsBindingObserver {
   StreamSubscription<Uri>? _linkSub;
   final _appLinks = AppLinks();
 
@@ -125,14 +139,15 @@ class _AppTemplateAppState extends State<AppTemplateApp> with WidgetsBindingObse
         );
         break;
       default:
-        final brightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
+        final brightness =
+            WidgetsBinding.instance.platformDispatcher.platformBrightness;
         style = (brightness == Brightness.dark
                 ? SystemUiOverlayStyle.light
                 : SystemUiOverlayStyle.dark)
             .copyWith(
-              statusBarColor: Colors.transparent,
-              systemNavigationBarColor: Colors.transparent,
-            );
+          statusBarColor: Colors.transparent,
+          systemNavigationBarColor: Colors.transparent,
+        );
     }
     SystemChrome.setSystemUIOverlayStyle(style);
   }
@@ -162,15 +177,18 @@ class _AppTemplateAppState extends State<AppTemplateApp> with WidgetsBindingObse
 
   @override
   Widget build(BuildContext context) {
-    final primary = ColorUtils.fromHexOr(AppConfig.fallbackThemeColor, const Color(0xFF1A1A2E));
-    final accent  = ColorUtils.fromHexOr(AppConfig.fallbackAccent, const Color(0xFFE94560));
+    final primary = ColorUtils.fromHexOr(
+        AppConfig.fallbackThemeColor, const Color(0xFF1A1A2E));
+    final accent =
+        ColorUtils.fromHexOr(AppConfig.fallbackAccent, const Color(0xFFE94560));
 
     return MaterialApp(
       title: AppConfig.appName,
       debugShowCheckedModeBanner: false,
       navigatorKey: NotificationService.navigatorKey,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: primary, secondary: accent),
+        colorScheme:
+            ColorScheme.fromSeed(seedColor: primary, secondary: accent),
         useMaterial3: true,
       ),
       // i18n — English + Hindi for native screens (splash, update, offline).

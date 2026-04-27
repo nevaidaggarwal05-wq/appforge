@@ -303,15 +303,15 @@ export default function ConfigForm({ app }: { app: App }) {
       {/* ── AdMob (conditional) ─────────────────────── */}
       {f.admob_enabled && (
         <Card title="AdMob" description="Required when AdMob ads are enabled above.">
-          <Field label="AdMob App ID">
+          <Field label="AdMob App ID" hint="⚠ Baked into the APK at build time (Android requirement). Set this once before the first build; changing it later requires a new release.">
             <input value={f.admob_app_id || ''} onChange={e => set('admob_app_id', e.target.value)}
               className="input font-mono text-sm" placeholder="ca-app-pub-XXXXXXXXXXXXXXXX~XXXXXXXXXX" />
           </Field>
-          <Field label="Banner ad unit ID">
+          <Field label="Banner ad unit ID" hint="Live — changing this propagates on the user's next cold start (no rebuild required).">
             <input value={f.admob_banner_unit_id || ''} onChange={e => set('admob_banner_unit_id', e.target.value)}
               className="input font-mono text-sm" placeholder="ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX" />
           </Field>
-          <Field label="Banner position" hint="Where the banner is pinned inside the app frame">
+          <Field label="Banner position" hint="Live — where the banner is pinned inside the app frame">
             <select value={f.admob_position} onChange={e => set('admob_position', e.target.value as 'none' | 'top' | 'bottom')}
               className="input">
               <option value="none">None (don't show banner)</option>

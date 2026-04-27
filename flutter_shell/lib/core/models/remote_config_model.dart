@@ -19,19 +19,20 @@ class SplashConfig {
   });
 
   factory SplashConfig.fromJson(Map<String, dynamic> j) => SplashConfig(
-        enabled:    j['enabled']     as bool?   ?? true,
-        color:      j['color']       as String? ?? AppConfig.fallbackThemeColor,
-        text:       j['text']        as String? ?? '',
-        durationMs: (j['duration_ms'] as num?)?.toInt() ?? AppConfig.splashDurationMs,
-        logoUrl:    j['logo_url']    as String? ?? '',
+        enabled: j['enabled'] as bool? ?? true,
+        color: j['color'] as String? ?? AppConfig.fallbackThemeColor,
+        text: j['text'] as String? ?? '',
+        durationMs:
+            (j['duration_ms'] as num?)?.toInt() ?? AppConfig.splashDurationMs,
+        logoUrl: j['logo_url'] as String? ?? '',
       );
 
   Map<String, dynamic> toJson() => {
-        'enabled':     enabled,
-        'color':       color,
-        'text':        text,
+        'enabled': enabled,
+        'color': color,
+        'text': text,
         'duration_ms': durationMs,
-        'logo_url':    logoUrl,
+        'logo_url': logoUrl,
       };
 }
 
@@ -43,7 +44,7 @@ class ThemeConfig {
 
   factory ThemeConfig.fromJson(Map<String, dynamic> j) => ThemeConfig(
         primary: j['primary'] as String? ?? AppConfig.fallbackThemeColor,
-        accent:  j['accent']  as String? ?? AppConfig.fallbackAccent,
+        accent: j['accent'] as String? ?? AppConfig.fallbackAccent,
       );
 
   Map<String, dynamic> toJson() => {'primary': primary, 'accent': accent};
@@ -75,29 +76,29 @@ class FeatureFlags {
   });
 
   factory FeatureFlags.fromJson(Map<String, dynamic> j) => FeatureFlags(
-        whatsappShare:      j['whatsapp_share']      as bool? ?? false,
-        biometricAuth:      j['biometric_auth']      as bool? ?? false,
-        admob:              j['admob']               as bool? ?? false,
-        darkMode:           j['dark_mode']           as bool? ?? true,
-        screenshotBlock:    j['screenshot_block']    as bool? ?? true,
-        rootBlock:          j['root_block']          as bool? ?? true,
+        whatsappShare: j['whatsapp_share'] as bool? ?? false,
+        biometricAuth: j['biometric_auth'] as bool? ?? false,
+        admob: j['admob'] as bool? ?? false,
+        darkMode: j['dark_mode'] as bool? ?? true,
+        screenshotBlock: j['screenshot_block'] as bool? ?? true,
+        rootBlock: j['root_block'] as bool? ?? true,
         sessionPersistence: j['session_persistence'] as bool? ?? true,
-        networkDetection:   j['network_detection']   as bool? ?? true,
-        pinchToZoom:        j['pinch_to_zoom']       as bool? ?? true,
-        pullToRefresh:      j['pull_to_refresh']     as bool? ?? true,
+        networkDetection: j['network_detection'] as bool? ?? true,
+        pinchToZoom: j['pinch_to_zoom'] as bool? ?? true,
+        pullToRefresh: j['pull_to_refresh'] as bool? ?? true,
       );
 
   Map<String, dynamic> toJson() => {
-        'whatsapp_share':      whatsappShare,
-        'biometric_auth':      biometricAuth,
-        'admob':               admob,
-        'dark_mode':           darkMode,
-        'screenshot_block':    screenshotBlock,
-        'root_block':          rootBlock,
+        'whatsapp_share': whatsappShare,
+        'biometric_auth': biometricAuth,
+        'admob': admob,
+        'dark_mode': darkMode,
+        'screenshot_block': screenshotBlock,
+        'root_block': rootBlock,
         'session_persistence': sessionPersistence,
-        'network_detection':   networkDetection,
-        'pinch_to_zoom':       pinchToZoom,
-        'pull_to_refresh':     pullToRefresh,
+        'network_detection': networkDetection,
+        'pinch_to_zoom': pinchToZoom,
+        'pull_to_refresh': pullToRefresh,
       };
 
   static const fallback = FeatureFlags(
@@ -119,21 +120,43 @@ class WhatsAppConfig {
   final String message;
   const WhatsAppConfig({required this.number, required this.message});
   factory WhatsAppConfig.fromJson(Map<String, dynamic> j) => WhatsAppConfig(
-        number:  j['number']  as String?,
+        number: j['number'] as String?,
         message: j['message'] as String? ?? 'Check out this app',
       );
   Map<String, dynamic> toJson() => {'number': number, 'message': message};
-  static const fallback = WhatsAppConfig(number: null, message: 'Check out this app');
+  static const fallback =
+      WhatsAppConfig(number: null, message: 'Check out this app');
 }
 
 class AdMobConfig {
   final String position; // 'none' | 'top' | 'bottom'
-  const AdMobConfig({required this.position});
+  final String?
+      appId; // ca-app-pub-XXX~YYY (informational; baked at build time)
+  final String? bannerUnitId; // ca-app-pub-XXX/ZZZ (runtime-driven)
+
+  const AdMobConfig({
+    required this.position,
+    required this.appId,
+    required this.bannerUnitId,
+  });
+
   factory AdMobConfig.fromJson(Map<String, dynamic> j) => AdMobConfig(
         position: j['position'] as String? ?? 'none',
+        appId: j['app_id'] as String?,
+        bannerUnitId: j['banner_unit_id'] as String?,
       );
-  Map<String, dynamic> toJson() => {'position': position};
-  static const fallback = AdMobConfig(position: 'none');
+
+  Map<String, dynamic> toJson() => {
+        'position': position,
+        'app_id': appId,
+        'banner_unit_id': bannerUnitId,
+      };
+
+  static const fallback = AdMobConfig(
+    position: 'none',
+    appId: null,
+    bannerUnitId: null,
+  );
 }
 
 class CacheConfig {
@@ -148,6 +171,7 @@ class CacheConfig {
     if (v == null || v is! String || v.isEmpty) return null;
     return DateTime.tryParse(v);
   }
+
   Map<String, dynamic> toJson() => {
         'soft_clear_at': softClearAt?.toIso8601String(),
         'hard_clear_at': hardClearAt?.toIso8601String(),
@@ -168,17 +192,18 @@ class UpdateConfig {
 
   factory UpdateConfig.fromJson(Map<String, dynamic> j) => UpdateConfig(
         minVersionCode: (j['min_version_code'] as num?)?.toInt() ?? 0,
-        message:        j['message']   as String? ?? '',
-        changelog:      j['changelog'] as String? ?? '',
+        message: j['message'] as String? ?? '',
+        changelog: j['changelog'] as String? ?? '',
       );
 
   Map<String, dynamic> toJson() => {
         'min_version_code': minVersionCode,
-        'message':          message,
-        'changelog':        changelog,
+        'message': message,
+        'changelog': changelog,
       };
 
-  static const fallback = UpdateConfig(minVersionCode: 0, message: '', changelog: '');
+  static const fallback =
+      UpdateConfig(minVersionCode: 0, message: '', changelog: '');
 }
 
 class WebViewConfig {
@@ -201,25 +226,26 @@ class WebViewConfig {
   });
 
   factory WebViewConfig.fromJson(Map<String, dynamic> j) => WebViewConfig(
-        userAgentSuffix:   j['user_agent_suffix']  as String?,
-        edgeToEdge:        j['edge_to_edge']       as bool? ?? true,
-        statusBarStyle:    j['status_bar_style']   as String? ?? 'auto',
+        userAgentSuffix: j['user_agent_suffix'] as String?,
+        edgeToEdge: j['edge_to_edge'] as bool? ?? true,
+        statusBarStyle: j['status_bar_style'] as String? ?? 'auto',
         longPressDisabled: j['long_press_disabled'] as bool? ?? true,
-        pageLoadTimeoutMs: (j['page_load_timeout_ms'] as num?)?.toInt() ?? 20000,
+        pageLoadTimeoutMs:
+            (j['page_load_timeout_ms'] as num?)?.toInt() ?? 20000,
         extraAllowedHosts: ((j['extra_allowed_hosts'] as List?) ?? const [])
             .map((e) => e.toString())
             .toList(),
-        themeColorSource:  j['theme_color_source'] as String? ?? 'admin',
+        themeColorSource: j['theme_color_source'] as String? ?? 'admin',
       );
 
   Map<String, dynamic> toJson() => {
-        'user_agent_suffix':    userAgentSuffix,
-        'edge_to_edge':         edgeToEdge,
-        'status_bar_style':     statusBarStyle,
-        'long_press_disabled':  longPressDisabled,
+        'user_agent_suffix': userAgentSuffix,
+        'edge_to_edge': edgeToEdge,
+        'status_bar_style': statusBarStyle,
+        'long_press_disabled': longPressDisabled,
         'page_load_timeout_ms': pageLoadTimeoutMs,
-        'extra_allowed_hosts':  extraAllowedHosts,
-        'theme_color_source':   themeColorSource,
+        'extra_allowed_hosts': extraAllowedHosts,
+        'theme_color_source': themeColorSource,
       };
 
   static const fallback = WebViewConfig(
@@ -246,18 +272,19 @@ class PermissionsConfig {
     required this.downloads,
   });
 
-  factory PermissionsConfig.fromJson(Map<String, dynamic> j) => PermissionsConfig(
+  factory PermissionsConfig.fromJson(Map<String, dynamic> j) =>
+      PermissionsConfig(
         geolocation: j['geolocation'] as bool? ?? false,
-        scanner:     j['scanner']     as bool? ?? false,
-        fileUpload:  j['file_upload'] as bool? ?? true,
-        downloads:   j['downloads']   as bool? ?? true,
+        scanner: j['scanner'] as bool? ?? false,
+        fileUpload: j['file_upload'] as bool? ?? true,
+        downloads: j['downloads'] as bool? ?? true,
       );
 
   Map<String, dynamic> toJson() => {
         'geolocation': geolocation,
-        'scanner':     scanner,
+        'scanner': scanner,
         'file_upload': fileUpload,
-        'downloads':   downloads,
+        'downloads': downloads,
       };
 
   static const fallback = PermissionsConfig(
@@ -275,12 +302,12 @@ class UploadConfig {
   const UploadConfig({required this.maxImageKb, required this.imageQuality});
 
   factory UploadConfig.fromJson(Map<String, dynamic> j) => UploadConfig(
-        maxImageKb:   (j['max_image_kb']  as num?)?.toInt() ?? 1024,
+        maxImageKb: (j['max_image_kb'] as num?)?.toInt() ?? 1024,
         imageQuality: (j['image_quality'] as num?)?.toInt() ?? 80,
       );
 
   Map<String, dynamic> toJson() => {
-        'max_image_kb':  maxImageKb,
+        'max_image_kb': maxImageKb,
         'image_quality': imageQuality,
       };
 
@@ -302,12 +329,16 @@ class OAuthConfig {
 
   Map<String, dynamic> toJson() => {
         'custom_scheme': customScheme,
-        'hosts':         hosts,
+        'hosts': hosts,
       };
 
   static const fallback = OAuthConfig(
     customScheme: null,
-    hosts: ['accounts.google.com', 'appleid.apple.com', 'login.microsoftonline.com'],
+    hosts: [
+      'accounts.google.com',
+      'appleid.apple.com',
+      'login.microsoftonline.com'
+    ],
   );
 }
 
@@ -368,44 +399,55 @@ class RemoteConfig {
     required this.fetchedAt,
   });
 
-  factory RemoteConfig.fromJson(Map<String, dynamic> j, {DateTime? fetchedAt}) => RemoteConfig(
-        appUrl:      j['app_url'] as String? ?? '',
-        splash:      SplashConfig.fromJson((j['splash'] ?? {}) as Map<String, dynamic>),
-        theme:       ThemeConfig.fromJson((j['theme']  ?? {}) as Map<String, dynamic>),
-        features:    FeatureFlags.fromJson((j['features'] ?? {}) as Map<String, dynamic>),
-        whatsapp:    WhatsAppConfig.fromJson((j['whatsapp'] ?? {}) as Map<String, dynamic>),
-        admob:       AdMobConfig.fromJson((j['admob']    ?? {}) as Map<String, dynamic>),
-        cache:       CacheConfig.fromJson((j['cache']    ?? {}) as Map<String, dynamic>),
-        webview:     WebViewConfig.fromJson((j['webview'] ?? {}) as Map<String, dynamic>),
-        permissions: PermissionsConfig.fromJson((j['permissions'] ?? {}) as Map<String, dynamic>),
-        upload:      UploadConfig.fromJson((j['upload'] ?? {}) as Map<String, dynamic>),
-        oauth:       OAuthConfig.fromJson((j['oauth']  ?? {}) as Map<String, dynamic>),
-        notif:       NotifConfig.fromJson((j['notif']  ?? {}) as Map<String, dynamic>),
-        locale:      LocaleConfig.fromJson((j['locale'] ?? {}) as Map<String, dynamic>),
-        forceUpdate: UpdateConfig.fromJson((j['force_update'] ?? {}) as Map<String, dynamic>),
-        softUpdate:  UpdateConfig.fromJson((j['soft_update']  ?? {}) as Map<String, dynamic>),
-        custom:      Map<String, dynamic>.from((j['custom'] ?? {}) as Map),
-        fetchedAt:   fetchedAt ?? DateTime.now(),
+  factory RemoteConfig.fromJson(Map<String, dynamic> j,
+          {DateTime? fetchedAt}) =>
+      RemoteConfig(
+        appUrl: j['app_url'] as String? ?? '',
+        splash:
+            SplashConfig.fromJson((j['splash'] ?? {}) as Map<String, dynamic>),
+        theme: ThemeConfig.fromJson((j['theme'] ?? {}) as Map<String, dynamic>),
+        features: FeatureFlags.fromJson(
+            (j['features'] ?? {}) as Map<String, dynamic>),
+        whatsapp: WhatsAppConfig.fromJson(
+            (j['whatsapp'] ?? {}) as Map<String, dynamic>),
+        admob: AdMobConfig.fromJson((j['admob'] ?? {}) as Map<String, dynamic>),
+        cache: CacheConfig.fromJson((j['cache'] ?? {}) as Map<String, dynamic>),
+        webview: WebViewConfig.fromJson(
+            (j['webview'] ?? {}) as Map<String, dynamic>),
+        permissions: PermissionsConfig.fromJson(
+            (j['permissions'] ?? {}) as Map<String, dynamic>),
+        upload:
+            UploadConfig.fromJson((j['upload'] ?? {}) as Map<String, dynamic>),
+        oauth: OAuthConfig.fromJson((j['oauth'] ?? {}) as Map<String, dynamic>),
+        notif: NotifConfig.fromJson((j['notif'] ?? {}) as Map<String, dynamic>),
+        locale:
+            LocaleConfig.fromJson((j['locale'] ?? {}) as Map<String, dynamic>),
+        forceUpdate: UpdateConfig.fromJson(
+            (j['force_update'] ?? {}) as Map<String, dynamic>),
+        softUpdate: UpdateConfig.fromJson(
+            (j['soft_update'] ?? {}) as Map<String, dynamic>),
+        custom: Map<String, dynamic>.from((j['custom'] ?? {}) as Map),
+        fetchedAt: fetchedAt ?? DateTime.now(),
       );
 
   Map<String, dynamic> toJson() => {
-        'app_url':      appUrl,
-        'splash':       splash.toJson(),
-        'theme':        theme.toJson(),
-        'features':     features.toJson(),
-        'whatsapp':     whatsapp.toJson(),
-        'admob':        admob.toJson(),
-        'cache':        cache.toJson(),
-        'webview':      webview.toJson(),
-        'permissions':  permissions.toJson(),
-        'upload':       upload.toJson(),
-        'oauth':        oauth.toJson(),
-        'notif':        notif.toJson(),
-        'locale':       locale.toJson(),
+        'app_url': appUrl,
+        'splash': splash.toJson(),
+        'theme': theme.toJson(),
+        'features': features.toJson(),
+        'whatsapp': whatsapp.toJson(),
+        'admob': admob.toJson(),
+        'cache': cache.toJson(),
+        'webview': webview.toJson(),
+        'permissions': permissions.toJson(),
+        'upload': upload.toJson(),
+        'oauth': oauth.toJson(),
+        'notif': notif.toJson(),
+        'locale': locale.toJson(),
         'force_update': forceUpdate.toJson(),
-        'soft_update':  softUpdate.toJson(),
-        'custom':       custom,
-        '_fetched_at':  fetchedAt.toIso8601String(),
+        'soft_update': softUpdate.toJson(),
+        'custom': custom,
+        '_fetched_at': fetchedAt.toIso8601String(),
       };
 
   factory RemoteConfig.fallback() => RemoteConfig(
@@ -419,20 +461,20 @@ class RemoteConfig {
         ),
         theme: const ThemeConfig(
           primary: AppConfig.fallbackThemeColor,
-          accent:  AppConfig.fallbackAccent,
+          accent: AppConfig.fallbackAccent,
         ),
-        features:    FeatureFlags.fallback,
-        whatsapp:    WhatsAppConfig.fallback,
-        admob:       AdMobConfig.fallback,
-        cache:       CacheConfig.fallback,
-        webview:     WebViewConfig.fallback,
+        features: FeatureFlags.fallback,
+        whatsapp: WhatsAppConfig.fallback,
+        admob: AdMobConfig.fallback,
+        cache: CacheConfig.fallback,
+        webview: WebViewConfig.fallback,
         permissions: PermissionsConfig.fallback,
-        upload:      UploadConfig.fallback,
-        oauth:       OAuthConfig.fallback,
-        notif:       NotifConfig.fallback,
-        locale:      LocaleConfig.fallback,
+        upload: UploadConfig.fallback,
+        oauth: OAuthConfig.fallback,
+        notif: NotifConfig.fallback,
+        locale: LocaleConfig.fallback,
         forceUpdate: UpdateConfig.fallback,
-        softUpdate:  UpdateConfig.fallback,
+        softUpdate: UpdateConfig.fallback,
         custom: const {},
         fetchedAt: DateTime.fromMillisecondsSinceEpoch(0),
       );

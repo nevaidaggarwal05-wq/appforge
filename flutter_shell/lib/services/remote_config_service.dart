@@ -31,7 +31,8 @@ class RemoteConfigService {
     if (cached != null) {
       _current = cached;
       _initialized = true;
-      Log.i('[config] cache hit (${cached.fetchedAt.toIso8601String()}) — refreshing in background');
+      Log.i(
+          '[config] cache hit (${cached.fetchedAt.toIso8601String()}) — refreshing in background');
 
       // Fire-and-forget background refresh.
       // Awaited upsert/save still happens inside _refresh; just not awaited here.
@@ -87,11 +88,11 @@ class RemoteConfigService {
       final api = ConfigApi(ApiClient(baseUrl: AppConfig.appforgeApiBaseUrl));
       final fresh = await api.fetch(
         AppConfig.appId,
-        fcmToken:    fcmToken,
-        platform:    platform,
+        fcmToken: fcmToken,
+        platform: platform,
         deviceModel: deviceModel,
-        osVersion:   osVersion,
-        appVersion:  appVersion,
+        osVersion: osVersion,
+        appVersion: appVersion,
       );
       _current = fresh;
       _initialized = true;
@@ -114,58 +115,73 @@ class RemoteConfigService {
   }
 
   // Typed accessors
-  static String  get appUrl             => _current.appUrl.isNotEmpty ? _current.appUrl : AppConfig.fallbackUrl;
-  static String  get themeColor         => _current.theme.primary;
-  static String  get accentColor        => _current.theme.accent;
-  static String  get splashColor        => _current.splash.color;
-  static String  get splashText         => _current.splash.text.isNotEmpty ? _current.splash.text : AppConfig.appName;
-  static int     get splashDuration     => _current.splash.durationMs;
-  static bool    get splashEnabled      => _current.splash.enabled;
-  static String  get splashLogoUrl      => _current.splash.logoUrl;
-  static bool    get whatsappEnabled    => _current.features.whatsappShare;
-  static bool    get admobEnabled       => _current.features.admob;
-  static bool    get biometricEnabled   => _current.features.biometricAuth;
-  static bool    get darkModeEnabled    => _current.features.darkMode;
-  static bool    get screenshotBlock    => _current.features.screenshotBlock;
-  static bool    get rootBlock          => _current.features.rootBlock;
-  static bool    get sessionPersistence => _current.features.sessionPersistence;
-  static bool    get networkDetection   => _current.features.networkDetection;
-  static int     get forceUpdateVersion => _current.forceUpdate.minVersionCode;
-  static int     get softUpdateVersion  => _current.softUpdate.minVersionCode;
-  static String  get forceUpdateMessage => _current.forceUpdate.message;
-  static String  get softUpdateMessage  => _current.softUpdate.message;
-  static String  get updateChangelog    => _current.forceUpdate.changelog;
+  static String get appUrl =>
+      _current.appUrl.isNotEmpty ? _current.appUrl : AppConfig.fallbackUrl;
+  static String get themeColor => _current.theme.primary;
+  static String get accentColor => _current.theme.accent;
+  static String get splashColor => _current.splash.color;
+  static String get splashText => _current.splash.text.isNotEmpty
+      ? _current.splash.text
+      : AppConfig.appName;
+  static int get splashDuration => _current.splash.durationMs;
+  static bool get splashEnabled => _current.splash.enabled;
+  static String get splashLogoUrl => _current.splash.logoUrl;
+  static bool get whatsappEnabled => _current.features.whatsappShare;
+  static bool get admobEnabled => _current.features.admob;
+  static bool get biometricEnabled => _current.features.biometricAuth;
+  static bool get darkModeEnabled => _current.features.darkMode;
+  static bool get screenshotBlock => _current.features.screenshotBlock;
+  static bool get rootBlock => _current.features.rootBlock;
+  static bool get sessionPersistence => _current.features.sessionPersistence;
+  static bool get networkDetection => _current.features.networkDetection;
+  static int get forceUpdateVersion => _current.forceUpdate.minVersionCode;
+  static int get softUpdateVersion => _current.softUpdate.minVersionCode;
+  static String get forceUpdateMessage => _current.forceUpdate.message;
+  static String get softUpdateMessage => _current.softUpdate.message;
+  static String get updateChangelog => _current.forceUpdate.changelog;
   static Map<String, dynamic> get custom => _current.custom;
 
   // Migration 002 additions
-  static bool      get pinchToZoom         => _current.features.pinchToZoom;
-  static bool      get pullToRefresh       => _current.features.pullToRefresh;
-  static String?   get whatsappNumber      => _current.whatsapp.number;
-  static String    get whatsappMessage     => _current.whatsapp.message;
-  static String    get admobPosition       => _current.admob.position; // 'none'|'top'|'bottom'
-  static DateTime? get cacheSoftClearAt    => _current.cache.softClearAt;
-  static DateTime? get cacheHardClearAt    => _current.cache.hardClearAt;
+  static bool get pinchToZoom => _current.features.pinchToZoom;
+  static bool get pullToRefresh => _current.features.pullToRefresh;
+  static String? get whatsappNumber => _current.whatsapp.number;
+  static String get whatsappMessage => _current.whatsapp.message;
+  static String get admobPosition =>
+      _current.admob.position; // 'none'|'top'|'bottom'
+  // Runtime-driven banner unit ID. Falls back to the build-time constant in
+  // AppConfig if the admin panel hasn't set one yet (or pre-migration shells).
+  static String get admobBannerUnitId =>
+      _current.admob.bannerUnitId?.isNotEmpty == true
+          ? _current.admob.bannerUnitId!
+          : AppConfig.admobBannerUnitId;
+  // Informational only — the actual App ID used by the SDK is baked into
+  // AndroidManifest.xml at build time. We expose this so dev tooling can warn
+  // if the admin panel value drifts from the manifest value (signals a misbuild).
+  static String? get admobAppIdFromConfig => _current.admob.appId;
+  static DateTime? get cacheSoftClearAt => _current.cache.softClearAt;
+  static DateTime? get cacheHardClearAt => _current.cache.hardClearAt;
 
   // Migration 003 additions
-  static String?      get userAgentSuffix    => _current.webview.userAgentSuffix;
-  static bool         get edgeToEdge         => _current.webview.edgeToEdge;
-  static String       get statusBarStyle     => _current.webview.statusBarStyle;
-  static bool         get longPressDisabled  => _current.webview.longPressDisabled;
-  static int          get pageLoadTimeoutMs  => _current.webview.pageLoadTimeoutMs;
-  static List<String> get extraAllowedHosts  => _current.webview.extraAllowedHosts;
-  static String       get themeColorSource   => _current.webview.themeColorSource;
+  static String? get userAgentSuffix => _current.webview.userAgentSuffix;
+  static bool get edgeToEdge => _current.webview.edgeToEdge;
+  static String get statusBarStyle => _current.webview.statusBarStyle;
+  static bool get longPressDisabled => _current.webview.longPressDisabled;
+  static int get pageLoadTimeoutMs => _current.webview.pageLoadTimeoutMs;
+  static List<String> get extraAllowedHosts =>
+      _current.webview.extraAllowedHosts;
+  static String get themeColorSource => _current.webview.themeColorSource;
 
-  static bool   get geolocationEnabled => _current.permissions.geolocation;
-  static bool   get scannerEnabled     => _current.permissions.scanner;
-  static bool   get fileUploadEnabled  => _current.permissions.fileUpload;
-  static bool   get downloadsEnabled   => _current.permissions.downloads;
+  static bool get geolocationEnabled => _current.permissions.geolocation;
+  static bool get scannerEnabled => _current.permissions.scanner;
+  static bool get fileUploadEnabled => _current.permissions.fileUpload;
+  static bool get downloadsEnabled => _current.permissions.downloads;
 
-  static int    get uploadMaxImageKb   => _current.upload.maxImageKb;
-  static int    get uploadImageQuality => _current.upload.imageQuality;
+  static int get uploadMaxImageKb => _current.upload.maxImageKb;
+  static int get uploadImageQuality => _current.upload.imageQuality;
 
-  static String?       get oauthCustomScheme => _current.oauth.customScheme;
-  static List<String>  get oauthHosts        => _current.oauth.hosts;
+  static String? get oauthCustomScheme => _current.oauth.customScheme;
+  static List<String> get oauthHosts => _current.oauth.hosts;
 
-  static bool   get notifBadgeEnabled  => _current.notif.badgeEnabled;
-  static String get defaultLocale      => _current.locale.defaultLocale;
+  static bool get notifBadgeEnabled => _current.notif.badgeEnabled;
+  static String get defaultLocale => _current.locale.defaultLocale;
 }

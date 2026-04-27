@@ -158,7 +158,11 @@ export interface RemoteConfigResponse {
     pull_to_refresh: boolean;
   };
   whatsapp: { number: string | null; message: string };
-  admob: { position: 'none' | 'top' | 'bottom' };
+  admob: {
+    position: 'none' | 'top' | 'bottom';
+    app_id: string | null;
+    banner_unit_id: string | null;
+  };
   cache: { soft_clear_at: string | null; hard_clear_at: string | null };
   webview: {
     user_agent_suffix: string | null;

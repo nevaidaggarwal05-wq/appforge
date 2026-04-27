@@ -79,7 +79,17 @@ export async function GET(
       message: app.whatsapp_message ?? 'Check out this app'
     },
     admob: {
-      position: (app.admob_position ?? 'none') as 'none' | 'top' | 'bottom'
+      position:       (app.admob_position ?? 'none') as 'none' | 'top' | 'bottom',
+      // app_id is baked into AndroidManifest at build time (Google's MobileAds
+      // SDK reads it from manifest meta-data before any Dart code runs, so it
+      // genuinely cannot be runtime-driven). We surface it here only so the
+      // Flutter shell can sanity-check the value it was built with against
+      // what the admin panel currently has — useful for debugging, but the
+      // shell does NOT reinitialize the SDK if these differ.
+      app_id:         app.admob_app_id ?? null,
+      // banner_unit_id IS runtime-driven. Shell reads this on every config
+      // refresh and uses it for the next ad request.
+      banner_unit_id: app.admob_banner_unit_id ?? null
     },
     cache: {
       soft_clear_at: app.cache_soft_clear_at ?? null,
