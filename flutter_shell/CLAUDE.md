@@ -12,13 +12,21 @@ directly. Builds happen in `~/Desktop/builds/<app>/`, assembled by
   remote-config model, the core models.
 - Shell-level defaults for Android (manifest, strings, colors) that
   the overrides layer can replace per app.
+- Shell-level defaults for iOS (Info.plist, Podfile, AppDelegate,
+  SceneDelegate, Runner.xcodeproj). Per-app values reference xcconfig
+  variables like `$(APP_BUNDLE_IDENTIFIER)`, which the override layer
+  supplies via `apps/<slug>/overrides/ios/Flutter/App.xcconfig`.
+- The Fastfile + Gemfile (`fastlane/`, `Gemfile`). Lanes here are
+  generic across every app — per-app values come from
+  `apps/<slug>/overrides/fastlane/Appfile` + `.env.default`.
 
 ## What does NOT belong here
 
-- App-specific IDs, package names, URLs, signing config, launcher
-  icons, splash assets. Those go under `apps/<app>/overrides/`.
-- Anything in `build/`, `.dart_tool/`, `android/.gradle/` — those are
-  generated and ignored by git.
+- App-specific IDs, bundle IDs, package names, URLs, signing config,
+  launcher icons, splash assets. Those go under `apps/<app>/overrides/`.
+- Anything in `build/`, `.dart_tool/`, `android/.gradle/`,
+  `ios/Pods/`, `ios/.symlinks/`, `ios/Runner.xcworkspace/xcuserdata/`
+  — those are generated and ignored by git.
 
 ## If you're fixing a bug
 

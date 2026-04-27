@@ -1,0 +1,202 @@
+# ───────────────────────────────────────────────────────────────────
+# AppForge Fastfile — generic across every white-label app.
+#
+# Per-app values come from environment variables, populated by
+# scripts/fastlane.sh from the per-app Appfile + app.yaml. So this
+# Fastfile never references "maximoney" or any specific package name.
+#
+# Lanes:
+#   android build                  — local AAB only, no upload
+#   android beta                   — AAB + upload to Internal Testing
+#   android promote rollout:0.1    — promote internal → production (10%)
+#   ios     build                  — local IPA only, no upload
+#   ios     beta                   — IPA + upload to TestFlight
+#   ios     promote                — submit latest TF build for App Store review
+#
+# Required env vars (validated at the top of each upload lane):
+#   ANDROID_PACKAGE_NAME           — e.g. com.maximoney.credit
+#   PLAY_SERVICE_ACCOUNT_JSON      — abs path to Google Play service-account JSON
+#   IOS_BUNDLE_ID                  — e.g. com.maximoney.credit
+#   ASC_KEY_ID / ASC_ISSUER_ID     — App Store Connect API key id + issuer
+#   ASC_KEY_PATH                   — abs path to .p8 key
+#
+# See docs/FASTLANE.md for credential setup.
+# ───────────────────────────────────────────────────────────────────
+
+default_platform(:android)
+
+# Helper — fail fast with a useful message instead of fastlane's
+# generic "unauthorized" two screens deep.
+def require_env(*keys)
+  missing = keys.reject { |k| ENV[k] && !ENV[k].empty? }
+  return if missing.empty?
+  UI.user_error!(
+    "Missing required env vars: #{missing.join(', ')}.\n" \
+    "These are normally populated by scripts/fastlane.sh from the per-app\n" \
+    "Appfile + app.yaml. If you're running fastlane directly, source the\n" \
+    "fastlane/.env.default file in the build dir first."
+  )
+end
+
+# Path helpers — Fastfile runs from <build_dir>/fastlane/, so the Flutter
+# project root is one level up.
+FLUTTER_ROOT = File.expand_path("..", __dir__)
+AAB_PATH     = File.join(FLUTTER_ROOT, "build", "app", "outputs", "bundle", "release", "app-release.aab")
+IOS_WORKSPACE = File.join(FLUTTER_ROOT, "ios", "Runner.xcworkspace")
+
+# ── ANDROID ────────────────────────────────────────────────────────
+platform :android do
+  desc "Build a release AAB locally — no upload."
+  lane :build do
+    sh("cd #{FLUTTER_ROOT.shellescape} && flutter clean && flutter pub get && flutter build appbundle --release")
+    UI.success("AAB built → #{AAB_PATH}")
+  end
+
+  desc "Build + upload AAB to Play Store Internal Testing track."
+  lane :beta do
+    require_env("ANDROID_PACKAGE_NAME", "PLAY_SERVICE_ACCOUNT_JSON")
+
+    sh("cd #{FLUTTER_ROOT.shellescape} && flutter clean && flutter pub get && flutter build appbundle --release")
+    UI.user_error!("AAB not found at #{AAB_PATH}") unless File.exist?(AAB_PATH)
+
+    upload_to_play_store(
+      package_name:            ENV["ANDROID_PACKAGE_NAME"],
+      json_key:                ENV["PLAY_SERVICE_ACCOUNT_JSON"],
+      track:                   "internal",
+      aab:                     AAB_PATH,
+      release_status:          "completed",
+      skip_upload_apk:         true,
+      skip_upload_metadata:    true,
+      skip_upload_images:      true,
+      skip_upload_screenshots: true,
+      skip_upload_changelogs:  false,  # picks up fastlane/metadata/android if present
+    )
+    UI.success("✓ Uploaded to Internal Testing track.")
+  end
+
+  desc "Promote latest Internal Testing build → Production with rollout%."
+  desc "Usage: fastlane android promote rollout:0.1   (10% staged rollout)"
+  lane :promote do |opts|
+    require_env("ANDROID_PACKAGE_NAME", "PLAY_SERVICE_ACCOUNT_JSON")
+    rollout = (opts[:rollout] || "0.1").to_s
+
+    upload_to_play_store(
+      package_name:            ENV["ANDROID_PACKAGE_NAME"],
+      json_key:                ENV["PLAY_SERVICE_ACCOUNT_JSON"],
+      track:                   "internal",
+      track_promote_to:        "production",
+      rollout:                 rollout,
+      skip_upload_apk:         true,
+      skip_upload_aab:         true,
+      skip_upload_metadata:    true,
+      skip_upload_images:      true,
+      skip_upload_screenshots: true,
+      skip_upload_changelogs:  true,
+    )
+    UI.success("✓ Promoted internal → production at #{(rollout.to_f * 100).round}% rollout.")
+  end
+end
+
+# ── iOS ────────────────────────────────────────────────────────────
+platform :ios do
+  desc "Build a release IPA locally — no upload."
+  lane :build do
+    sh("cd #{FLUTTER_ROOT.shellescape} && flutter clean && flutter pub get")
+    cocoapods(podfile: File.join(FLUTTER_ROOT, "ios", "Podfile"), repo_update: true)
+
+    build_ios_app(
+      workspace:      IOS_WORKSPACE,
+      scheme:         "Runner",
+      configuration:  "Release",
+      export_method:  "app-store",
+      clean:          true,
+    )
+    UI.success("✓ IPA built.")
+  end
+
+  desc "Build + upload IPA to TestFlight."
+  lane :beta do
+    require_env("IOS_BUNDLE_ID", "ASC_KEY_ID", "ASC_ISSUER_ID", "ASC_KEY_PATH")
+
+    api_key = app_store_connect_api_key(
+      key_id:        ENV["ASC_KEY_ID"],
+      issuer_id:     ENV["ASC_ISSUER_ID"],
+      key_filepath:  ENV["ASC_KEY_PATH"],
+      duration:      1200,
+      in_house:      false,
+    )
+
+    sh("cd #{FLUTTER_ROOT.shellescape} && flutter clean && flutter pub get")
+    cocoapods(podfile: File.join(FLUTTER_ROOT, "ios", "Podfile"), repo_update: true)
+
+    build_ios_app(
+      workspace:      IOS_WORKSPACE,
+      scheme:         "Runner",
+      configuration:  "Release",
+      export_method:  "app-store",
+      clean:          true,
+    )
+
+    upload_to_testflight(
+      api_key:                            api_key,
+      app_identifier:                     ENV["IOS_BUNDLE_ID"],
+      skip_waiting_for_build_processing:  true,  # don't block the script
+      changelog:                          ENV["IOS_CHANGELOG"] || "Bug fixes and improvements.",
+    )
+    UI.success("✓ Uploaded to TestFlight.")
+  end
+
+  desc "Submit latest TestFlight build for App Store review."
+  desc "Note: doesn't re-upload — picks up the most recent processed build."
+  lane :promote do
+    require_env("IOS_BUNDLE_ID", "ASC_KEY_ID", "ASC_ISSUER_ID", "ASC_KEY_PATH")
+
+    api_key = app_store_connect_api_key(
+      key_id:        ENV["ASC_KEY_ID"],
+      issuer_id:     ENV["ASC_ISSUER_ID"],
+      key_filepath:  ENV["ASC_KEY_PATH"],
+      duration:      1200,
+    )
+
+    deliver(
+      api_key:                api_key,
+      app_identifier:         ENV["IOS_BUNDLE_ID"],
+      submit_for_review:      true,
+      automatic_release:      false,  # let you flip the switch in App Store Connect
+      force:                  true,
+      skip_binary_upload:     true,   # binary already on TestFlight
+      skip_metadata:          true,
+      skip_screenshots:       true,
+      precheck_include_in_app_purchases: false,
+      submission_information: {
+        add_id_info_uses_idfa: false,
+        export_compliance_uses_encryption: false,
+      }
+    )
+    UI.success("✓ Submitted for App Store review.")
+  end
+end
+
+# ── Cross-platform convenience ─────────────────────────────────────
+desc "Validate that env vars / credential files are present for both stores."
+lane :doctor do
+  android_ok = ENV["PLAY_SERVICE_ACCOUNT_JSON"] && File.exist?(ENV["PLAY_SERVICE_ACCOUNT_JSON"].to_s)
+  ios_ok     = ENV["ASC_KEY_PATH"] && File.exist?(ENV["ASC_KEY_PATH"].to_s)
+
+  UI.message("Android package: #{ENV['ANDROID_PACKAGE_NAME'] || '(unset)'}")
+  UI.message("Play key file:   #{ENV['PLAY_SERVICE_ACCOUNT_JSON'] || '(unset)'} #{android_ok ? '✓' : '✗ missing'}")
+  UI.message("iOS bundle:      #{ENV['IOS_BUNDLE_ID'] || '(unset)'}")
+  UI.message("ASC key file:    #{ENV['ASC_KEY_PATH'] || '(unset)'} #{ios_ok ? '✓' : '✗ missing'}")
+  UI.message("ASC key id:      #{ENV['ASC_KEY_ID'] || '(unset)'}")
+  UI.message("ASC issuer id:   #{ENV['ASC_ISSUER_ID'] || '(unset)'}")
+
+  if android_ok && ios_ok
+    UI.success("Doctor passed — both Android + iOS credentials look configured.")
+  elsif android_ok
+    UI.important("Android ready, iOS not configured (expected if you haven't paid for Apple Dev yet).")
+  elsif ios_ok
+    UI.important("iOS ready, Android not configured.")
+  else
+    UI.user_error!("No credentials configured — see docs/FASTLANE.md for setup.")
+  end
+end

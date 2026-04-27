@@ -1,0 +1,15 @@
+# Maximoney Appfile — overlaid on top of flutter_shell/fastlane/Appfile
+# by scripts/sync-app.sh.
+
+for_platform :android do
+  package_name("com.maximoney.credit")
+end
+
+for_platform :ios do
+  app_identifier("com.maximoney.credit")
+  # Apple ID + team ID get filled in once the $99 Apple Developer
+  # enrollment is active. Until then, iOS lanes will refuse to run
+  # (require_env in the Fastfile guards this).
+  apple_id(ENV["APPLE_ID"]) if ENV["APPLE_ID"]
+  team_id(ENV["APPLE_TEAM_ID"]) if ENV["APPLE_TEAM_ID"]
+end

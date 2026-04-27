@@ -51,10 +51,10 @@ echo "  → build:   $BUILD_DIR"
 
 mkdir -p "$BUILD_DIR"
 
-# Shell → build. Preserve out/ (release artifacts), build/ (Gradle cache),
-# .dart_tool/ (pub cache), local.properties (SDK path), key.properties
-# (signing secrets), and the Android intermediates that Gradle/Flutter
-# regenerate themselves.
+# Shell → build. Preserve out/ (release artifacts), build/ (Gradle/Xcode
+# caches), .dart_tool/ (pub cache), local.properties (SDK path),
+# key.properties (signing secrets), and the Android/iOS intermediates that
+# Gradle / Xcode / Flutter regenerate themselves.
 rsync -a --delete \
   --exclude 'out/' \
   --exclude 'build/' \
@@ -67,6 +67,16 @@ rsync -a --delete \
   --exclude 'android/app/src/main/kotlin/com/template/' \
   --exclude 'ios/Flutter/Generated.xcconfig' \
   --exclude 'ios/Flutter/flutter_export_environment.sh' \
+  --exclude 'ios/Pods/' \
+  --exclude 'ios/Podfile.lock' \
+  --exclude 'ios/.symlinks/' \
+  --exclude 'ios/Runner.xcworkspace/xcuserdata/' \
+  --exclude 'ios/Runner.xcodeproj/xcuserdata/' \
+  --exclude 'ios/Flutter/App.xcconfig.example' \
+  --exclude 'Gemfile.lock' \
+  --exclude 'fastlane/report.xml' \
+  --exclude 'fastlane/test_output/' \
+  --exclude 'fastlane/.env.default' \
   "$SHELL_DIR/" "$BUILD_DIR/"
 
 # Overrides on top. No --delete — overrides add/replace, never remove.

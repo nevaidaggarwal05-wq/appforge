@@ -1,0 +1,7 @@
+# Fastlane plugins for the AppForge shell.
+#
+# Add plugins via `bundle exec fastlane add_plugin <name>` from the
+# build directory — this file gets re-written. Anything added here
+# applies to every app, so prefer cross-cutting plugins only.
+
+# (No plugins yet. Add when needed.)

@@ -1,0 +1,22 @@
+# ───────────────────────────────────────────────────────────────────
+# Generic Appfile — DO NOT put per-app values here.
+#
+# Per-app identifiers (package name, bundle ID, Apple ID) live in:
+#   apps/<slug>/overrides/fastlane/Appfile
+# which gets layered on top of this file by scripts/sync-app.sh.
+#
+# This file exists so a fresh shell can run `fastlane lanes` for help
+# without a per-app Appfile present. The values below are intentional
+# placeholders — the override is what actually runs in production.
+# ───────────────────────────────────────────────────────────────────
+
+for_platform :android do
+  package_name(ENV["ANDROID_PACKAGE_NAME"] || "com.appforge.template")
+  json_key_file(ENV["PLAY_SERVICE_ACCOUNT_JSON"]) if ENV["PLAY_SERVICE_ACCOUNT_JSON"]
+end
+
+for_platform :ios do
+  app_identifier(ENV["IOS_BUNDLE_ID"] || "com.appforge.template")
+  apple_id(ENV["APPLE_ID"]) if ENV["APPLE_ID"]
+  team_id(ENV["APPLE_TEAM_ID"]) if ENV["APPLE_TEAM_ID"]
+end

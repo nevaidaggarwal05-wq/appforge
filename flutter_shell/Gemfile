@@ -1,0 +1,11 @@
+source "https://rubygems.org"
+
+# Fastlane drives the Play Store / TestFlight uploads. Pinned to a
+# minor range so a fresh `bundle install` on a new machine doesn't
+# pull a breaking 3.x release. Bump deliberately when needed.
+gem "fastlane", "~> 2.220"
+
+# Plugins (currently none, but Pluginfile is auto-loaded by fastlane
+# when present, and `fastlane add_plugin <name>` writes to it).
+plugins_path = File.join(File.dirname(__FILE__), 'fastlane', 'Pluginfile')
+eval_gemfile(plugins_path) if File.exist?(plugins_path)
