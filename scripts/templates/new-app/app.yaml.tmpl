@@ -1,0 +1,67 @@
+# {{DISPLAY_NAME}} — per-app metadata.
+#
+# This file is the SINGLE SOURCE OF TRUTH for every per-app identifier.
+# `scripts/new-app.sh {{SLUG}}` reads it and regenerates every override
+# under apps/{{SLUG}}/overrides/. Edit values here and re-run the script
+# to propagate.
+#
+# Files under overrides/ are layered onto flutter_shell/ by
+# scripts/sync-app.sh. NEVER edit the copy in ~/Desktop/builds/{{SLUG}}/.
+
+# ── Identity ─────────────────────────────────────────────────────
+name:        {{SLUG}}
+display:     {{DISPLAY_NAME}}
+package:     {{PACKAGE}}
+webview_url: {{WEBVIEW_URL}}
+
+# Custom URL scheme for OAuth callbacks + push deep-links. Convention
+# is the slug itself (e.g. "{{SLUG}}://callback?code=..."). Must NOT
+# collide with another installed app's scheme.
+oauth_scheme: {{OAUTH_SCHEME}}
+
+# Brand colors — used as offline fallbacks before remote config loads
+# (admin panel overrides at runtime). Hex with leading # (e.g. #1DBF98).
+theme_color:  {{THEME_COLOR}}
+accent_color: {{ACCENT_COLOR}}
+
+# WhatsApp / generic share text shown when the user shares the app.
+share_message: {{SHARE_MESSAGE}}
+
+# ── AppForge backend + Firebase ──────────────────────────────────
+# These come from external systems — fill in AFTER you've created the
+# app rows in the admin panel and Firebase Console (see docs/NEW_APP_GUIDE.md):
+appforge_api_base_url:    {{APPFORGE_API_BASE_URL}}
+appforge_app_id:          {{APPFORGE_APP_ID}}
+firebase_project:         {{FIREBASE_PROJECT}}
+firebase_android_app_id:  {{FIREBASE_ANDROID_APP_ID}}
+
+# ── AdMob ────────────────────────────────────────────────────────
+# App IDs are BUILD-TIME (baked into the APK / IPA, can't be
+# admin-driven). Banner unit ID is admin-driven via remote config.
+# Use Google's test IDs until you ship real ads:
+#   Android test app ID:  ca-app-pub-3940256099942544~3347511713
+#   iOS     test app ID:  ca-app-pub-3940256099942544~1458002511
+admob_app_id_android: {{ADMOB_APP_ID_ANDROID}}
+admob_app_id_ios:     {{ADMOB_APP_ID_IOS}}
+
+# ── Signing (Android) ────────────────────────────────────────────
+# Path to the keystore on this machine. Keystore itself is NOT
+# committed — generate via:
+#   keytool -genkey -v -keystore ~/Desktop/{{SLUG}}-keystore.jks \
+#     -alias {{SLUG}} -keyalg RSA -keysize 2048 -validity 10000
+keystore_path:   {{KEYSTORE_PATH}}
+keystore_alias:  {{KEYSTORE_ALIAS}}
+# SHA-256 fingerprint goes into assetlinks.json for App Links + Sign-In-with-Google.
+# Get it via: keytool -list -v -keystore <path> -alias <alias>
+keystore_sha256: {{KEYSTORE_SHA256}}
+
+# ── Build output ─────────────────────────────────────────────────
+build_dir: {{BUILD_DIR}}
+out_dir:   {{OUT_DIR}}
+
+# ── Version ──────────────────────────────────────────────────────
+# Bump via `scripts/bump-version.sh {{SLUG}} patch|minor|major`. Do NOT
+# bump these by hand without also updating overrides/pubspec.yaml +
+# overrides/android/app/build.gradle (the bump script does this).
+version_name: {{VERSION_NAME}}
+version_code: {{VERSION_CODE}}

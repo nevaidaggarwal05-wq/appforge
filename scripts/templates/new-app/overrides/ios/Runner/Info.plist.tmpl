@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- {{DISPLAY_NAME}} — replaces the shell's ios/Runner/Info.plist
+	     wholesale via the rsync overlay. Keep ALL keys — rsync replacement
+	     is whole-file, not key-merge. -->
+
+	<!-- Identity -->
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>{{DISPLAY_NAME}}</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>{{DISPLAY_NAME}}</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+
+	<!-- Scenes / launch -->
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneClassName</key>
+					<string>UIWindowScene</string>
+					<key>UISceneConfigurationName</key>
+					<string>flutter</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+					<key>UISceneStoryboardFile</key>
+					<string>Main</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+	</array>
+
+	<!-- Permission usage strings -->
+	<key>NSCameraUsageDescription</key>
+	<string>{{DISPLAY_NAME}} uses your camera to scan documents and upload supporting photos.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>{{DISPLAY_NAME}} needs access to your photos so you can upload supporting documents.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>{{DISPLAY_NAME}} saves downloaded files and screenshots to your photos.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>{{DISPLAY_NAME}} uses the microphone for voice input on the website.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>{{DISPLAY_NAME}} uses your location to personalize content shown to you.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>{{DISPLAY_NAME}} uses Face ID to keep your account secure.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>{{DISPLAY_NAME}} may access your contacts when you choose to share content.</string>
+
+	<!-- ATS — HTTPS only -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+
+	<!-- URL schemes the app can OPEN -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>upi</string>
+		<string>tez</string>
+		<string>phonepe</string>
+		<string>paytmmp</string>
+		<string>bhim</string>
+		<string>credpay</string>
+		<string>whatsapp</string>
+		<string>tel</string>
+		<string>sms</string>
+		<string>mailto</string>
+		<string>itms-apps</string>
+	</array>
+
+	<!-- URL schemes the app RECEIVES (OAuth + deep links) -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>{{PACKAGE}}.oauth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>{{OAUTH_SCHEME}}</string>
+			</array>
+		</dict>
+	</array>
+
+	<!-- Universal Links — apple-app-site-association must be hosted at
+	     https://{{WEBVIEW_HOST}}/.well-known/apple-app-site-association -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:{{WEBVIEW_HOST}}</string>
+	</array>
+
+	<!-- Background modes -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+		<string>fetch</string>
+	</array>
+
+	<!-- FCM swizzling off — wired explicitly in AppDelegate.swift -->
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<false/>
+
+	<!-- AdMob — must match build.gradle manifestPlaceholders.admobAppId
+	     (Android side) and the admin panel's "AdMob App ID" field. -->
+	<key>GADApplicationIdentifier</key>
+	<string>{{ADMOB_APP_ID_IOS}}</string>
+	<key>SKAdNetworkItems</key>
+	<array>
+		<dict>
+			<key>SKAdNetworkIdentifier</key>
+			<string>cstr6suwn9.skadnetwork</string>
+		</dict>
+	</array>
+
+	<!-- Misc -->
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<false/>
+	<key>UIStatusBarStyle</key>
+	<string>UIStatusBarStyleDefault</string>
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+</dict>
+</plist>

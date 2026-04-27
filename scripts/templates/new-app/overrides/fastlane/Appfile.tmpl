@@ -1,0 +1,12 @@
+# {{DISPLAY_NAME}} Appfile — overlaid on top of flutter_shell/fastlane/Appfile
+# by scripts/sync-app.sh.
+
+for_platform :android do
+  package_name("{{PACKAGE}}")
+end
+
+for_platform :ios do
+  app_identifier("{{PACKAGE}}")
+  apple_id(ENV["APPLE_ID"]) if ENV["APPLE_ID"]
+  team_id(ENV["APPLE_TEAM_ID"]) if ENV["APPLE_TEAM_ID"]
+end
