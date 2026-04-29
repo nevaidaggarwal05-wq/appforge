@@ -10,7 +10,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import 'app_config.dart';
-import 'firebase_options.dart';
 import 'core/api/api_client.dart';
 import 'core/api/config_api.dart';
 import 'l10n/app_localizations.dart';
@@ -34,10 +33,16 @@ void main() {
     // overlay style below is re-applied on RemoteConfig load.
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
-    // Firebase (core + crashlytics + messaging)
+    // Firebase (core + crashlytics + messaging).
+    //
+    // No explicit options — for a white-label shell, baking per-app
+    // FirebaseOptions into Dart would mean a per-app override of
+    // firebase_options.dart. Instead we let Firebase auto-discover the
+    // platform's default app via google-services.json (Android) and
+    // GoogleService-Info.plist (iOS), both of which already live under
+    // apps/<slug>/overrides/ and are layered into the build dir at sync.
     try {
-      await Firebase.initializeApp(
-          options: DefaultFirebaseOptions.currentPlatform);
+      await Firebase.initializeApp();
 
       // Forward Flutter errors to both Crashlytics and our backend
       FlutterError.onError = (details) {
