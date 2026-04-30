@@ -132,30 +132,35 @@ class AdMobConfig {
   final String position; // 'none' | 'top' | 'bottom'
   final String?
       appId; // ca-app-pub-XXX~YYY (informational; baked at build time)
-  final String? bannerUnitId; // ca-app-pub-XXX/ZZZ (runtime-driven)
+  final String? bannerUnitId;    // Android (and iOS fallback)
+  final String? bannerUnitIdIos; // iOS-specific override; null → use bannerUnitId
 
   const AdMobConfig({
     required this.position,
     required this.appId,
     required this.bannerUnitId,
+    required this.bannerUnitIdIos,
   });
 
   factory AdMobConfig.fromJson(Map<String, dynamic> j) => AdMobConfig(
         position: j['position'] as String? ?? 'none',
         appId: j['app_id'] as String?,
         bannerUnitId: j['banner_unit_id'] as String?,
+        bannerUnitIdIos: j['banner_unit_id_ios'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
         'position': position,
         'app_id': appId,
         'banner_unit_id': bannerUnitId,
+        'banner_unit_id_ios': bannerUnitIdIos,
       };
 
   static const fallback = AdMobConfig(
     position: 'none',
     appId: null,
     bannerUnitId: null,
+    bannerUnitIdIos: null,
   );
 }
 

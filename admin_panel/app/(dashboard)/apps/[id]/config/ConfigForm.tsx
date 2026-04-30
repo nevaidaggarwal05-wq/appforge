@@ -307,8 +307,12 @@ export default function ConfigForm({ app }: { app: App }) {
             <input value={f.admob_app_id || ''} onChange={e => set('admob_app_id', e.target.value)}
               className="input font-mono text-sm" placeholder="ca-app-pub-XXXXXXXXXXXXXXXX~XXXXXXXXXX" />
           </Field>
-          <Field label="Banner ad unit ID" hint="Live — changing this propagates on the user's next cold start (no rebuild required).">
+          <Field label="Banner ad unit ID — Android" hint="Live — changing this propagates on the user's next cold start (no rebuild required).">
             <input value={f.admob_banner_unit_id || ''} onChange={e => set('admob_banner_unit_id', e.target.value)}
+              className="input font-mono text-sm" placeholder="ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX" />
+          </Field>
+          <Field label="Banner ad unit ID — iOS" hint="Live — Google's policy is one ad unit per platform. Leave blank to reuse the Android one (suboptimal — separate units fill better).">
+            <input value={f.admob_banner_unit_id_ios || ''} onChange={e => set('admob_banner_unit_id_ios', e.target.value)}
               className="input font-mono text-sm" placeholder="ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX" />
           </Field>
           <Field label="Banner position" hint="Live — where the banner is pinned inside the app frame">

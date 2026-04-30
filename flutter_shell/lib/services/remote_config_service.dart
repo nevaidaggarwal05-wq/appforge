@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import '../app_config.dart';
 import '../core/api/api_client.dart';
 import '../core/api/config_api.dart';
@@ -148,12 +150,24 @@ class RemoteConfigService {
   static String get whatsappMessage => _current.whatsapp.message;
   static String get admobPosition =>
       _current.admob.position; // 'none'|'top'|'bottom'
-  // Runtime-driven banner unit ID. Falls back to the build-time constant in
-  // AppConfig if the admin panel hasn't set one yet (or pre-migration shells).
-  static String get admobBannerUnitId =>
-      _current.admob.bannerUnitId?.isNotEmpty == true
-          ? _current.admob.bannerUnitId!
-          : AppConfig.admobBannerUnitId;
+  // Runtime-driven banner unit ID. AdMob best practice is one ad unit per
+  // platform — the admin panel lets the app owner set an iOS-specific override
+  // alongside the universal (Android-default) value. Lookup order on iOS:
+  //   1. iOS-specific field if non-empty
+  //   2. Universal field (Android value) if non-empty
+  //   3. Build-time fallback in AppConfig
+  // Lookup order on Android:
+  //   1. Universal field
+  //   2. AppConfig fallback
+  static String get admobBannerUnitId {
+    if (Platform.isIOS) {
+      final ios = _current.admob.bannerUnitIdIos;
+      if (ios != null && ios.isNotEmpty) return ios;
+    }
+    final shared = _current.admob.bannerUnitId;
+    if (shared != null && shared.isNotEmpty) return shared;
+    return AppConfig.admobBannerUnitId;
+  }
   // Informational only — the actual App ID used by the SDK is baked into
   // AndroidManifest.xml at build time. We expose this so dev tooling can warn
   // if the admin panel value drifts from the manifest value (signals a misbuild).

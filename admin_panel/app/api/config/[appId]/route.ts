@@ -88,8 +88,10 @@ export async function GET(
       // shell does NOT reinitialize the SDK if these differ.
       app_id:         app.admob_app_id ?? null,
       // banner_unit_id IS runtime-driven. Shell reads this on every config
-      // refresh and uses it for the next ad request.
-      banner_unit_id: app.admob_banner_unit_id ?? null
+      // refresh and uses it for the next ad request. iOS gets its own
+      // override field; when NULL the iOS shell falls back to banner_unit_id.
+      banner_unit_id:     app.admob_banner_unit_id ?? null,
+      banner_unit_id_ios: app.admob_banner_unit_id_ios ?? null
     },
     cache: {
       soft_clear_at: app.cache_soft_clear_at ?? null,

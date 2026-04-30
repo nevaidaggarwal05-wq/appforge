@@ -48,9 +48,10 @@ All query params are optional. If provided, the backend registers/updates the `f
     "network_detection":   true
   },
   "admob": {
-    "position":       "none",
-    "app_id":         "ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY",
-    "banner_unit_id": "ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ"
+    "position":           "none",
+    "app_id":             "ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY",
+    "banner_unit_id":     "ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ",
+    "banner_unit_id_ios": "ca-app-pub-XXXXXXXXXXXXXXXX/QQQQQQQQQQ"
   },
   "force_update": {
     "min_version_code": 0,
@@ -88,7 +89,8 @@ The shell does its own offline-first caching in SharedPreferences (next-launch-a
 ### AdMob fields — important caveat
 
 - **`admob.app_id`** is informational only. Google's MobileAds SDK reads the App ID from `AndroidManifest.xml` `<meta-data>` *before* any Dart code runs, so it cannot be runtime-driven. The shell surfaces this value so it can warn during dev if the manifest-baked App ID drifts from what's in the admin panel.
-- **`admob.banner_unit_id`** IS runtime-driven. The shell reads this on every config refresh and uses the value for the next ad request — so changing it in the admin panel propagates without a rebuild.
+- **`admob.banner_unit_id`** IS runtime-driven. The shell reads this on every config refresh and uses the value for the next ad request — so changing it in the admin panel propagates without a rebuild. Used on Android, and as the iOS fallback when `banner_unit_id_ios` is null.
+- **`admob.banner_unit_id_ios`** is runtime-driven and iOS-only. AdMob's policy is one ad unit per platform; setting this gives iOS its own unit (separate fill optimization, separate eCPM, separate reporting). When null, the iOS shell falls back to `banner_unit_id`.
 - **`admob.position`** is runtime-driven. `'none'` hides the banner entirely.
 
 ### Flutter Dart equivalent (RemoteConfig model)

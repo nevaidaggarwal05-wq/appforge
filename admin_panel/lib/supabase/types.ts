@@ -51,7 +51,8 @@ export interface App {
 
   // admob
   admob_app_id: string | null;
-  admob_banner_unit_id: string | null;
+  admob_banner_unit_id: string | null;       // Android (and iOS fallback)
+  admob_banner_unit_id_ios: string | null;   // iOS override; NULL → use admob_banner_unit_id
 
   // stores
   play_store_url: string | null;
@@ -162,6 +163,7 @@ export interface RemoteConfigResponse {
     position: 'none' | 'top' | 'bottom';
     app_id: string | null;
     banner_unit_id: string | null;
+    banner_unit_id_ios: string | null;
   };
   cache: { soft_clear_at: string | null; hard_clear_at: string | null };
   webview: {
