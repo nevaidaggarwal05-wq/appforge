@@ -34,8 +34,10 @@ class LocationService {
       }
 
       final pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: accuracy,
-        timeLimit: timeout,
+        locationSettings: LocationSettings(
+          accuracy: accuracy,
+          timeLimit: timeout,
+        ),
       );
       return {
         'latitude':         pos.latitude,
