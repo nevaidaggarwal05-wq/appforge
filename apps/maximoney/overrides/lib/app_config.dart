@@ -11,8 +11,8 @@ class AppConfig {
   static const String playStoreUrl = '';
   static const String appStoreUrl  = '';
   static const String whatsappShareMessage = 'Check out Maximoney';
-  static const String admobAppId        = 'ca-app-pub-3940256099942544~3347511713';
-  static const String admobBannerUnitId = 'ca-app-pub-3940256099942544/6300978111';
+  static const String admobAppId        = 'ca-app-pub-9156239422426147~9266996948';
+  static const String admobBannerUnitId = 'ca-app-pub-9156239422426147/8659972268';
   static const int ratingPromptAfterSessions = 5;
   static const String notifChannelTransactional = 'transactional';
   static const String notifChannelPromotional   = 'promotional';

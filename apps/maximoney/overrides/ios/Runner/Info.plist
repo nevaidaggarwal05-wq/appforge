@@ -149,12 +149,11 @@
 	<key>FirebaseAppDelegateProxyEnabled</key>
 	<false/>
 
-	<!-- AdMob — currently using Google's iOS test placeholder. Replace
-	     with the real Maximoney `ca-app-pub-XXX~YYY` from the AdMob
-	     console before going live. The same value should also be entered
-	     in the admin panel under App config → AdMob → "AdMob App ID". -->
+	<!-- AdMob iOS App ID — read by GoogleMobileAds SDK at SDK init,
+	     before any Dart runs. The same value should also be entered in
+	     the admin panel under App config → AdMob → "AdMob App ID iOS". -->
 	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-3940256099942544~1458002511</string>
+	<string>ca-app-pub-9156239422426147~9590655418</string>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>

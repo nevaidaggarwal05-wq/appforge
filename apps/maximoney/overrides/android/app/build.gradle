@@ -45,16 +45,11 @@ android {
 
         // AdMob App ID — Google's MobileAds SDK reads this from the
         // AndroidManifest <meta-data> tag at init time, BEFORE any Dart code
-        // runs, so it cannot be runtime-driven. Set the real production
-        // App ID here once before going live with ads. The shell manifest
-        // references it via ${admobAppId}.
-        //
-        // Currently using Google's official test placeholder — replace
-        // with the real `ca-app-pub-XXX~YYY` from AdMob console.
-        // The same value should also be entered in the admin panel under
-        // App config → AdMob → "AdMob App ID" so the live config and
-        // built APK stay in sync.
-        manifestPlaceholders.admobAppId = "ca-app-pub-3940256099942544~3347511713"
+        // runs, so it cannot be runtime-driven. The shell manifest references
+        // it via ${admobAppId}. Mirror the same value in the admin panel under
+        // App config → AdMob → "AdMob App ID" so the live config and built
+        // APK stay in sync.
+        manifestPlaceholders.admobAppId = "ca-app-pub-9156239422426147~9266996948"
     }
 
     signingConfigs {

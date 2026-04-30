@@ -18,6 +18,12 @@ appforge_app_id:         24984694-8a1d-47ba-a0cf-1a94e9b99839
 firebase_project:        appforge-push
 firebase_android_app_id: 1:767214826244:android:15a9975f4ba0bad62b5651
 
+# AdMob — App IDs are build-time-baked (manifest meta-data on Android,
+# GADApplicationIdentifier on iOS). Banner unit IDs are runtime-driven
+# and live in the admin panel — fallback values in app_config.dart.
+admob_app_id_android: ca-app-pub-9156239422426147~9266996948
+admob_app_id_ios:     ca-app-pub-9156239422426147~9590655418
+
 # Signing (local only — key.properties is NOT committed)
 keystore_path:  ~/Desktop/maximoney-keystore.jks
 keystore_alias: maximoney
