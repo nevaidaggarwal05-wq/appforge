@@ -219,11 +219,27 @@ Store Connect API key.
 
 ---
 
+## Sanity-check before each ship
+
+```bash
+scripts/doctor.sh <slug>
+```
+
+Runs through every per-app prerequisite (code health, Android assets,
+signing, fastlane creds, iOS assets, hosting) and tells you exactly
+what's still missing with `✓` / `⚠` / `✗` markers. Exits 0 when Android
+can ship, non-zero otherwise. iOS warnings never fail the exit — they're
+informational since iOS often legitimately lags behind Apple enrolment.
+Live-checks the `https://<webview_host>/.well-known/` endpoints with
+curl too — catches "I uploaded the file but the web server didn't pick
+it up" issues.
+
 ## After everything's wired
 
 ```bash
 scripts/new-app.sh <slug>          # final regen with all real IDs
 scripts/sync-app.sh <slug>         # propagate
+scripts/doctor.sh <slug>           # confirm green
 scripts/ship.sh <slug> patch       # bump → commit → upload to Internal + TestFlight
 ```
 

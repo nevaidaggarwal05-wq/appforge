@@ -199,6 +199,7 @@ render "$TMPL_DIR/overrides/ios/Runner/Info.plist.tmpl"                     "$OV
 render "$TMPL_DIR/overrides/fastlane/Appfile.tmpl"                          "$OVR/fastlane/Appfile"
 render "$TMPL_DIR/overrides/fastlane/.env.default.tmpl"                     "$OVR/fastlane/.env.default"
 render "$TMPL_DIR/overrides/docs/hosting/assetlinks_TEMPLATE.json.tmpl"     "$OVR/docs/hosting/assetlinks_TEMPLATE.json"
+render "$TMPL_DIR/overrides/docs/hosting/apple-app-site-association_TEMPLATE.json.tmpl" "$OVR/docs/hosting/apple-app-site-association_TEMPLATE.json"
 
 cat <<EOF
 ✓ Regenerated $(find "$OVR" -name '*.dart' -o -name '*.yaml' -o -name '*.gradle' -o -name '*.xml' -o -name '*.kt' -o -name '*.plist' -o -name '*.xcconfig' -o -name 'Appfile' -o -name '.env.default' -o -name '*.json' 2>/dev/null | wc -l | tr -d ' ') override file(s) under $OVR/
